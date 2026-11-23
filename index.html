@@ -11,13 +11,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&family=Ma+Shan+Zheng&family=Reenie+Beanie&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>长大 · Grow Up in Chinese</title>
 <style>
 /* 墨分五色 — rice paper, ink in five shades, one cinnabar seal */
-:root{--hw-outline:#DAD4CB;--paper:#FAF8F3;--card:#FFFFFF;--ink:#141414;--muted:#6B6560;--gold:#E9B10A;--orange:#E2711D;--r:999px;--rc:28px;--shadow:0 4px 20px -2px rgba(0,0,0,.06);--brush:"Ma Shan Zheng",var(--kai);--hand:"Reenie Beanie",var(--brush);--line:color-mix(in srgb,var(--ink) 14%,transparent);--soft:color-mix(in srgb,var(--ink) 6%,var(--paper));
+:root{--hw-outline:#DAD4CB;--paper:#FAF8F3;--card:#FFFFFF;--ink:#141414;--muted:#6B6560;--gold:#E9B10A;--orange:#E2711D;--r:999px;--rc:28px;--shadow:0 4px 20px -2px rgba(0,0,0,.06);--line:color-mix(in srgb,var(--ink) 14%,transparent);--soft:color-mix(in srgb,var(--ink) 6%,var(--paper));
 --seal:#C1272D;--good:#2E7D5B;--bad:#C1272D;--warn:#B8860B;
 --t1:#C1272D;--t2:#D9822B;--t3:#2E7D5B;--t4:#2B5F9E;--t5:#8A9097;
 --ink1:var(--seal);--ink2:var(--orange);--ink3:var(--gold);--ink4:color-mix(in srgb,var(--gold) 45%,var(--paper));
@@ -198,10 +198,10 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 @keyframes drift{to{transform:translateY(-10px) translateX(8px)}}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .blobs i{opacity:.18}}
 :root[data-theme=dark] .blobs i{opacity:.18}
-/* hero: roof, then the lesson in brush script */
+/* hero: roof, then the lesson */
 .hero{text-align:center;padding:26px 0 10px}
 .hero .roof{margin:0 auto 10px}
-.hero p{font:400 34px/1.2 var(--brush);margin:6px 0 2px}
+.hero p{font:800 28px/1.2 var(--ui);letter-spacing:-.02em;margin:6px 0 2px}
 .hero .meta{font:500 15px/1.4 var(--ui);color:var(--muted)}
 /* horizontal text strip */
 .hscroll{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;margin:6px -16px 4px;padding:6px 16px 14px;scrollbar-width:none}
@@ -209,15 +209,13 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .hcard{flex:none;width:220px;height:130px;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:space-between;padding:16px 18px;border-radius:24px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;color:var(--ink);border:1px solid color-mix(in srgb,var(--ink) 8%,transparent);transition:color .2s}
 .hcard span{font-size:13px;color:var(--muted)}.hcard b{font-size:20px;line-height:1.3}
 .hcard:hover b,.hcard:active b{color:var(--seal)}
-/* library notes, slightly tilted, signed in brush */
+/* library notes */
 .notes{display:grid;grid-template-columns:1fr;gap:14px;margin:8px 0 18px}
 @media (min-width:480px){.notes{grid-template-columns:1fr 1fr}}
-.note{display:block;padding:18px 20px;border-radius:24px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;color:var(--ink);transform:rotate(-1deg);border:1px solid color-mix(in srgb,var(--ink) 6%,transparent)}
-.note:nth-child(even){transform:rotate(1deg)}
+.note{display:block;padding:18px 20px;border-radius:24px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;color:var(--ink);border:2px solid var(--line2)}
 .note b{display:block;font-size:20px;margin:8px 0 10px}
 .note .ico{float:right;color:var(--good)}
-.sig{display:flex;align-items:center;gap:10px;font:400 24px/1 var(--hand);color:var(--muted)}
-.sig::before{content:"";width:32px;height:1px;background:currentColor;flex:none}
+.sig{display:block;font:500 13px/1.3 var(--ui);color:var(--muted)}
 /* accordions: rounded container, plus that turns into × */
 details{border:1px solid color-mix(in srgb,var(--ink) 8%,transparent);border-radius:16px;background:var(--card);padding:0 18px;margin:10px 0}
 details summary{list-style:none;min-height:56px;font-weight:500;justify-content:space-between}
@@ -227,6 +225,53 @@ details[open] summary::after{transform:rotate(45deg)}
 details[open]{padding-bottom:18px}
 details.card{padding:0 18px}
 /* reveal on scroll */
+/* ---- modern app layer (Duolingo / Brilliant feel) ---- */
+:root{--line2:#E8E4DD;--press:#8F1B1F;--rc:20px}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--line2:#2C2A28;--press:#8F2A22}}
+:root[data-theme=dark]{--line2:#2C2A28;--press:#8F2A22}
+body::before{display:none}
+.blobs i{opacity:.12}
+h2{font:800 26px/1.15 var(--ui);letter-spacing:-.02em}
+h3{font:800 17px/1.3 var(--ui);letter-spacing:-.01em}
+h2::before{display:none}
+header h1{font:800 20px/1 var(--ui);letter-spacing:-.01em}
+nav a b{font:800 20px/1.15 var(--hz)}
+.card,.group{background-image:none;box-shadow:none;border:2px solid var(--line2);border-radius:var(--rc)}
+.fb,.stat{box-shadow:none;border:2px solid var(--line2)}
+.fb.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 9%,var(--card))}
+.fb.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 8%,var(--card))}
+.btn{border-radius:16px;border:2px solid var(--line2);background:var(--card);color:var(--ink);box-shadow:0 4px 0 var(--line2);font:800 15px var(--ui);letter-spacing:.01em;transition:transform .08s,box-shadow .08s}
+.btn:hover{background:var(--card);color:var(--ink)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line2);background:var(--card);color:var(--ink)}
+.btn.pri{background:var(--seal);border-color:var(--seal);color:#fff;box-shadow:0 4px 0 var(--press)}
+.btn.pri:hover{background:var(--seal);color:#fff}
+.btn.pri:active{background:var(--seal);color:#fff;box-shadow:0 1px 0 var(--press)}
+.btn.sm{border-radius:12px;box-shadow:0 3px 0 var(--line2)}
+.grades .btn{border-radius:14px}
+.grades .btn.sug{background:var(--seal);border-color:var(--seal);color:#fff;box-shadow:0 4px 0 var(--press)}
+.opt{border:2px solid var(--line2);border-radius:16px;box-shadow:0 4px 0 var(--line2);font-weight:600;transition:transform .08s,box-shadow .08s}
+.opt:hover{border-color:var(--line2);background:color-mix(in srgb,var(--ink) 3%,var(--card))}
+.opt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line2)}
+.opt.sel{border-color:var(--t4);box-shadow:0 4px 0 color-mix(in srgb,var(--t4) 60%,transparent)}
+.opt.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,var(--card));box-shadow:0 4px 0 var(--good)}
+.opt.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--card));box-shadow:0 4px 0 var(--bad)}
+.tile{border:2px solid var(--line2);border-radius:14px;box-shadow:0 3px 0 var(--line2)}
+.chip{border:2px solid var(--line2);border-radius:12px;font-weight:700}
+.seg{border:2px solid var(--line2);border-radius:14px}.seg button{border-radius:10px}
+.step{border:2px solid var(--line2);border-radius:14px}
+.bar{height:14px;border-radius:999px;background:var(--line2)}
+.bar i{border-radius:999px;background:var(--seal);box-shadow:inset 0 4px 0 -1px color-mix(in srgb,#fff 30%,transparent)}
+.prog{top:56px}
+.hcard,.note{box-shadow:none;border:2px solid var(--line2);border-radius:var(--rc)}
+details{border:2px solid var(--line2);border-radius:16px}
+nav{border:2px solid var(--line2);background:color-mix(in srgb,var(--card) 88%,transparent);box-shadow:0 8px 24px -10px rgba(0,0,0,.18)}
+nav a.on b{color:var(--seal)}
+.mic{box-shadow:0 5px 0 var(--press)}
+.mic:active{transform:translateY(3px);box-shadow:0 2px 0 var(--press)}
+input[type=text],textarea,select{border:2px solid var(--line2);border-radius:16px}
+.hwbox{border-width:2px}
+body.in-session nav{display:none}
+body.in-session{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 @media (prefers-reduced-motion:no-preference){.rv{opacity:0;transform:translateY(30px);transition:opacity .8s ease,transform .8s ease}.rv.in{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
@@ -1883,6 +1928,7 @@ function route() {
   closeSheet(); if (TTS.ok) speechSynthesis.cancel();
   const [name, a, b] = (location.hash.slice(1) || 'today').split('/');
   $$('nav a').forEach(x => x.classList.toggle('on', x.dataset.tab === name || (name === 'unit' && x.dataset.tab === 'course') || (name === 'text' && x.dataset.tab === 'library') || (name === 'entry' && x.dataset.tab === 'dict')));
+  document.body.classList.toggle('in-session', name === 'session'); // lessons get the full screen, like Duolingo
   if (name === 'session') { if (SES) return; return go('#today'); }
   if (SES && name !== 'session') SES = null;
   (V[name] || V.today)(a, b);
