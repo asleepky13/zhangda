@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "stages": [
+    { "n": 1, "title": "幼儿", "en": "Toddler & preschool", "units": ["s1u01.json", "s1u02.json", "s1u03.json", "s1u04.json", "s1u05.json", "s1u06.json", "s1u07.json", "s1u08.json", "s1u09.json", "s1u10.json"] },
+    { "n": 2, "title": "小学低年级", "en": "Primary, grades 1–3", "plan": "是/有/在, 了/过/着, 的/地/得, 把/被, first Tang poems, 三字经, fables", "units": ["s2u01.json"] },
+    { "n": 3, "title": "小学高年级", "en": "Primary, grades 4–6", "plan": "成语 stories, complements, complex sentences, classic novels retold, myths, diaries and letters", "units": [] },
+    { "n": 4, "title": "初中", "en": "Middle school", "plan": "文言文 function words, 论语, 孟子, 庄子, Tang & Song poets, 修辞, 鲁迅 and 朱自清", "units": [] },
+    { "n": 5, "title": "高中", "en": "High school", "plan": "史记, 出师表, 岳阳楼记, 赤壁赋, 唐诗宋词, 书面语, 高考 essays, graded novella, history & culture", "units": [] },
+    { "n": 6, "title": "成人", "en": "Adult", "plan": "news, business, formal writing, fast speech, 相声, slang, accents, calligraphy, persuasive essays", "units": [] }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "长大 · Grow Up in Chinese",
+  "short_name": "长大",
+  "start_url": "./#today",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f4ec",
+  "theme_color": "#b83a2e",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
