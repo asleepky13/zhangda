@@ -271,6 +271,87 @@ nav a.on b{color:var(--seal)}
 input[type=text],textarea,select{border:2px solid var(--line2);border-radius:16px}
 .hwbox{border-width:2px}
 body.in-session nav{display:none}
+body.in-session{padding-bottom:48vh!important}
+/* Today: roof, red palace wall with the moon-gate goal ring, swaying lantern */
+.hero3{text-align:center;padding:14px 0 4px}
+.hero3 .roof{display:block;margin:0 auto -2px;max-width:330px;position:relative;z-index:1}
+.gatewrap{position:relative;width:min(100%,290px);margin:0 auto}
+.gate{display:block;width:100%;height:auto}
+.gate .num{font:800 44px var(--ui);fill:var(--ink);letter-spacing:-.02em}
+.gate .lab{font:600 12.5px var(--ui);fill:var(--muted)}
+.ring{animation:ringfill 1.2s var(--ease) both .15s}
+@keyframes ringfill{from{stroke-dashoffset:var(--c)}}
+.lantern{position:absolute;right:-6px;top:-4px;width:58px;transform-origin:50% 0}
+.lantern svg{display:block;width:100%}
+.lantern b{position:absolute;left:0;right:0;top:41px;color:#fff;font:800 17px/1 var(--ui);text-align:center}
+.lantern:not(.lit){filter:grayscale(1);opacity:.55}
+.lantern.lit{animation:sway 3.4s ease-in-out infinite alternate}
+.lantern.glow svg{filter:drop-shadow(0 4px 14px color-mix(in srgb,var(--gold) 75%,transparent))}
+@keyframes sway{from{rotate:-5deg}to{rotate:5deg}}
+.next{margin:16px 0 2px}
+.next .kick{display:block;font:700 13px var(--ui);color:var(--seal)}
+.next b{display:block;font:800 22px/1.25 var(--ui);letter-spacing:-.01em;margin-top:3px}
+.cta{min-height:58px;font-size:17px;margin-top:14px}
+.note-s{font-size:12.5px;color:var(--muted);margin:10px 6px 4px;line-height:1.45}
+/* unit banner + lesson path */
+.ubanner{position:relative;margin:16px 0 6px;padding:26px 22px 18px;border-radius:24px;background:var(--seal);color:#fff;box-shadow:0 6px 0 var(--press);overflow:hidden}
+.ubanner::before{content:"";position:absolute;left:0;right:0;top:0;height:9px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 6.5h12V1.5H4v3h5' fill='none' stroke='%23E9B10A' stroke-width='1.3'/%3E%3C/svg%3E") repeat-x center/16px 8px}
+.ubanner h2{color:#fff;margin:4px 0 0;font-size:30px}
+.ubanner span,.ubanner p,.ubanner small{color:rgba(255,255,255,.82);font-size:13px;font-weight:600;margin:0}
+.ubanner p{font-size:15px}
+.ubanner .bar{background:rgba(0,0,0,.22);margin:14px 0 6px;height:10px}
+.ubanner .bar i{background:var(--gold);box-shadow:none}
+.uintro{margin:10px 0}
+.path{display:flex;flex-direction:column;align-items:center;gap:26px;padding:34px 0 18px}
+.stop{position:relative;display:flex;flex-direction:column;align-items:center;gap:9px;width:150px;text-align:center;transform:translateX(var(--x))}
+.stop small{font:700 12px/1.3 var(--ui);color:var(--muted)}
+.node{width:76px;height:70px;border-radius:50%;border:0;padding:0;background:var(--seal);color:#fff;box-shadow:0 7px 0 var(--press);cursor:pointer;display:grid;place-items:center;place-content:center;font:900 30px/1 var(--song);transition:transform .08s,box-shadow .08s}
+.node:active{transform:translateY(5px);box-shadow:0 2px 0 var(--press)}
+.node .ico{width:30px;height:30px;stroke-width:2.6}
+.node.done{background:var(--gold);color:#5C3B00;box-shadow:0 7px 0 #A8790A}
+.node.done:active{box-shadow:0 2px 0 #A8790A}
+.node.lock{background:var(--line2);color:var(--muted);box-shadow:0 7px 0 color-mix(in srgb,#000 14%,var(--line2));cursor:default}
+.node.lock:active{transform:none}
+.node.cur{outline:6px solid color-mix(in srgb,var(--gold) 60%,transparent);outline-offset:7px;animation:beckon 1.8s ease-in-out infinite}
+@keyframes beckon{50%{outline-color:color-mix(in srgb,var(--gold) 15%,transparent);outline-offset:11px}}
+.start{position:absolute;top:-40px;padding:6px 13px;border-radius:12px;background:var(--card);border:2px solid var(--line2);font:800 13px var(--ui);color:var(--seal);animation:bob 1.8s ease-in-out infinite;z-index:1}
+.start::after{content:"";position:absolute;left:50%;bottom:-7px;width:10px;height:10px;background:var(--card);border-right:2px solid var(--line2);border-bottom:2px solid var(--line2);transform:translateX(-50%) rotate(45deg)}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.gatenode{width:98px;height:88px;border-radius:49px 49px 14px 14px;background:#1C1A19;color:var(--gold);box-shadow:0 7px 0 #000;font-size:36px}
+.gatenode.done{background:var(--gold);color:#5C3B00;box-shadow:0 7px 0 #A8790A}
+/* answer feedback as a bottom sheet */
+.sheetfb{position:fixed;left:0;right:0;bottom:0;z-index:15;max-width:520px;margin:0 auto;border:0!important;border-top:3px solid!important;border-radius:26px 26px 0 0!important;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:72vh;overflow:auto;animation:rise .32s var(--ease);box-shadow:0 -12px 30px -14px rgba(0,0,0,.3)}
+.sheetfb.ok{background:color-mix(in srgb,var(--good) 13%,var(--card));border-top-color:var(--good)!important}
+.sheetfb.no{background:color-mix(in srgb,var(--bad) 11%,var(--card));border-top-color:var(--bad)!important}
+.fbh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.fbh b{font:800 22px var(--ui)}
+.fbh .ico{width:34px;height:34px;padding:6px;border-radius:50%;color:#fff;stroke-width:3.2}
+.sheetfb.ok .fbh b{color:var(--good)}.sheetfb.ok .fbh .ico{background:var(--good)}
+.sheetfb.no .fbh b{color:var(--bad)}.sheetfb.no .fbh .ico{background:var(--bad)}
+.sheetfb .btn.pri.block{margin-top:14px}
+.sheetfb.ok .btn.pri{background:var(--good);border-color:var(--good);box-shadow:0 4px 0 color-mix(in srgb,#000 30%,var(--good))}
+.combo{flex:none;padding:4px 10px;border-radius:999px;background:var(--gold);color:#4A3000;font:800 12.5px var(--ui);animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+/* completion: seal stamp, stats, paper confetti */
+.finish{text-align:center;padding:9vh 0 0}
+.stamp{display:grid;grid-template:1fr 1fr/1fr 1fr;grid-auto-flow:column;direction:rtl;width:136px;height:136px;margin:0 auto 26px;padding:12px;border-radius:12px;background-color:var(--seal);color:#FFF8F0;box-shadow:inset 0 0 0 5px var(--seal),inset 0 0 0 8px rgba(255,248,240,.9);transform:rotate(-6deg);animation:stampIn .6s cubic-bezier(.2,1.5,.4,1) both;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='136'%3E%3Cfilter id='f'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 2.1'/%3E%3C/filter%3E%3Crect width='136' height='136' filter='url(%23f)'/%3E%3C/svg%3E");mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='136'%3E%3Cfilter id='f'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 2.1'/%3E%3C/filter%3E%3Crect width='136' height='136' filter='url(%23f)'/%3E%3C/svg%3E")}
+.stamp i{display:grid;place-items:center;font:900 46px/1 var(--song);font-style:normal}
+.stamp.dim{background-color:var(--muted);box-shadow:inset 0 0 0 5px var(--muted),inset 0 0 0 8px rgba(255,248,240,.85)}
+@keyframes stampIn{0%{transform:scale(2.3) rotate(-18deg);opacity:0}60%{transform:scale(.94) rotate(-5deg);opacity:1}80%{transform:scale(1.03) rotate(-6deg)}100%{transform:rotate(-6deg)}}
+.finish h2{font-size:30px;margin:0}
+.finish p{margin:6px 10px 22px}
+.tiles3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.tilex{display:flex;flex-direction:column;align-items:center;gap:3px;padding:14px 6px;border:2px solid var(--line2);border-radius:18px;background:var(--card)}
+.tilex .ico{width:22px;height:22px;color:var(--seal)}
+.tilex b{font:800 22px var(--ui)}.tilex span{font-size:12px;color:var(--muted);font-weight:600}
+.confetti{position:fixed;inset:0;z-index:60;pointer-events:none;width:100%;height:100%}
+/* dashboard skill rings */
+.skills{display:flex;align-items:center;gap:16px}
+.rings{width:150px;height:150px;flex:none}
+.legend{display:grid;gap:10px;font-size:12px}
+.legend div{display:grid;grid-template-columns:12px 22px 1fr;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:4px}
+.legend b{font:800 15px var(--hz)}.legend span{color:var(--muted);line-height:1.3}
 body.in-session{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 @media (prefers-reduced-motion:no-preference){.rv{opacity:0;transform:translateY(30px);transition:opacity .8s ease,transform .8s ease}.rv.in{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
@@ -296,6 +377,9 @@ body.in-session{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol>
 <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13.5h9l1-13.5"/></symbol>
+<symbol id="i-lantern" viewBox="0 0 24 24"><path d="M12 1.5v2.5M8.5 4h7M8.5 20h7M12 20v2.5"/><ellipse cx="12" cy="12" rx="7.5" ry="8"/><path d="M12 4c-3.2 2-3.2 14 0 16M12 4c3.2 2 3.2 14 0 16"/></symbol>
+<symbol id="i-cards" viewBox="0 0 24 24"><rect x="4" y="6" width="12" height="15" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v13"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></symbol>
 <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
 </svg>
 <div class="blobs" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -701,7 +785,7 @@ const DB = {
 };
 let CARDS = new Map();
 let META = null;
-const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false, native: true, deviceVoice: true, voiceSrc: 'builtin' },
+const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false, native: true, deviceVoice: true, voiceSrc: 'builtin', sfx: true },
   progress: { lessons: {}, units: {}, stages: {}, scen: {} }, stats: { days: {}, tone: {}, conf: {} }, weak: {}, streak: { n: 0, last: '' }, custom: [] });
 const S = () => META.settings;
 const save = () => DB.putMeta();
@@ -1099,7 +1183,7 @@ function checkStreak() {
 }
 function renderStreak() {
   const st = META.streak, y = dayKey(Date.now() - 864e5), live = st.last === dayKey() || st.last === y;
-  $('#streak').innerHTML = `${ic('flame')}${live ? st.n : 0}<span>&nbsp;· ${dueCards().length} due</span>`;
+  $('#streak').innerHTML = `${ic('lantern')}${live ? st.n : 0}<span>&nbsp;· ${dueCards().length} due</span>`;
 }
 function lookalikes(it) { // characters sharing a component/radical with this single character
   const ch = D.chars.get(it.s);
@@ -1127,6 +1211,70 @@ function chooseKind(c, it, mode) {
   return 'speakMeaning';
 }
 
+
+// ---------------- crafted elements ----------------
+const ROOF_SVG = `<svg class="roof" viewBox="0 0 340 74" aria-hidden="true"><path d="M86 19h168" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><path d="M86 19c-6-9-14-10-18-4M254 19c6-9 14-10 18-4" stroke="var(--ink)" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M92 20h156c16 18 44 30 84 33l-6 6H14l-6-6c40-3 68-15 84-33z" fill="var(--seal)"/><path d="M84 30h172M70 40h200M46 50h248" stroke="color-mix(in srgb,#000 22%,var(--seal))" stroke-width="1.5"/><rect x="40" y="58" width="260" height="5" fill="var(--gold)"/><rect x="40" y="63" width="260" height="9" fill="var(--seal)"/><path d="M60 63v9M110 63v9M170 63v9M230 63v9M280 63v9" stroke="var(--gold)" stroke-width="2"/></svg>`;
+// 月亮门: a palace wall with a round moon gate; the gold ring around the opening is today's review goal
+function gateSVG(pct, done, goal) {
+  const r = 86, C = 2 * Math.PI * r, off = C * (1 - Math.min(1, pct / 100));
+  return `<svg class="gate" viewBox="0 0 260 214" role="img" aria-label="Daily goal: ${done} of ${goal} reviews">
+    <defs><clipPath id="gateIn"><circle cx="130" cy="110" r="80"/></clipPath>
+    <pattern id="lattice" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 9h18M9 0v18M0 0l18 18" stroke="var(--line2)" stroke-width="1.2" fill="none"/></pattern></defs>
+    <rect x="14" y="0" width="232" height="214" fill="var(--seal)"/>
+    <path d="M14 36h232M14 76h232M14 116h232M14 156h232M14 196h232M70 0v36M190 0v36M40 36v40M220 36v40M70 76v40M190 76v40M40 116v40M220 116v40M70 156v40M190 156v40" stroke="rgba(0,0,0,.13)" stroke-width="1.4"/>
+    <circle cx="130" cy="110" r="94" fill="var(--paper)"/>
+    <rect x="40" y="20" width="180" height="180" fill="url(#lattice)" clip-path="url(#gateIn)" opacity=".8"/>
+    <circle cx="130" cy="110" r="${r}" fill="none" stroke="color-mix(in srgb,#000 22%,var(--seal))" stroke-width="9"/>
+    <circle class="ring" cx="130" cy="110" r="${r}" fill="none" stroke="var(--gold)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 130 110)" style="--c:${C.toFixed(1)}"/>
+    <rect x="86" y="80" width="88" height="62" rx="16" fill="var(--paper)" opacity=".86"/>
+    <text class="num" x="130" y="110" text-anchor="middle" dominant-baseline="central">${done}</text>
+    <text class="lab" x="130" y="136" text-anchor="middle">of ${goal} reviews</text></svg>`;
+}
+// 灯笼: the streak lantern sways while the streak is alive and glows once today's goal is met
+function lanternHTML(n, live, today) {
+  return `<div class="lantern${live ? ' lit' : ''}${today ? ' glow' : ''}" role="img" aria-label="Streak: ${n} day${n === 1 ? '' : 's'}"><svg viewBox="0 0 60 96" aria-hidden="true"><path d="M30 0v15" stroke="var(--ink)" stroke-width="1.6"/><rect x="19" y="14" width="22" height="8" rx="2.5" fill="var(--gold)"/><ellipse cx="30" cy="47" rx="27" ry="26" fill="var(--seal)"/><path d="M30 21c-11 6-11 46 0 52M30 21c11 6 11 46 0 52M30 21c-22 8-22 44 0 52M30 21c22 8 22 44 0 52" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.3"/><ellipse cx="22" cy="36" rx="6" ry="9" fill="rgba(255,255,255,.18)"/><rect x="19" y="71" width="22" height="8" rx="2.5" fill="var(--gold)"/><path d="M25 79v15M30 79v17M35 79v15" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round"/></svg><b>${n}</b></div>`;
+}
+// short chime: two rising notes when right, one low note when wrong
+let AC = null;
+function chime(ok) {
+  if (S().sfx === false) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime, notes = ok ? [[784, 0], [1175, 0.09]] : [[196, 0], [165, 0.11]];
+    for (const [f, d] of notes) {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = ok ? 'triangle' : 'sine'; o.frequency.value = f; o.connect(g); g.connect(AC.destination);
+      g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(ok ? 0.16 : 0.12, t + d + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.32);
+      o.start(t + d); o.stop(t + d + 0.35);
+    }
+  } catch (e) {}
+}
+// paper confetti in palace colours
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.createElement('canvas'); cv.className = 'confetti'; document.body.appendChild(cv);
+  const dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight; cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const css = getComputedStyle(document.documentElement), cols = ['--seal', '--gold', '--orange'].map(v => css.getPropertyValue(v).trim());
+  const P = Array.from({ length: 150 }, () => ({ x: W / 2 + (Math.random() - 0.5) * 90, y: H * 0.3, vx: (Math.random() - 0.5) * 15, vy: -Math.random() * 15 - 6, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.35, w: 6 + Math.random() * 7, h: 9 + Math.random() * 9, c: cols[Math.random() * 3 | 0] }));
+  const t0 = performance.now();
+  (function frame(t) {
+    g.clearRect(0, 0, W, H);
+    for (const q of P) { q.vy += 0.42; q.vx *= 0.985; q.x += q.vx; q.y += q.vy; q.r += q.vr; const k = Math.abs(Math.cos(q.r * 2)); g.save(); g.translate(q.x, q.y); g.rotate(q.r); g.fillStyle = q.c; g.fillRect(-q.w / 2, -q.h * k / 2, q.w, q.h * k); g.restore(); }
+    if (t - t0 < 3200) requestAnimationFrame(frame); else cv.remove();
+  })(t0);
+}
+// completion: a four-character seal stamps down (read right-to-left in columns, like a real chop)
+function doneScreen({ seal, title, sub, stats, cta, href, pass = true }) {
+  view.innerHTML = `<section class="finish"><div class="stamp${pass ? '' : ' dim'}" aria-label="${esc(seal)}">${[...seal].map(c => `<i>${c}</i>`).join('')}</div>
+    <h2>${title}</h2><p class="muted">${sub}</p>
+    <div class="tiles3">${stats.map(([v, l, i]) => `<div class="tilex">${ic(i)}<b>${v}</b><span>${l}</span></div>`).join('')}</div>
+    <a class="btn pri block cta" href="${href}">${cta}</a></section>`;
+  if (pass) setTimeout(confetti, 380);
+  checkStreak(); renderStreak();
+}
+const sesStats = s => [[(s.n ? Math.round(s.ok / s.n * 100) : 0) + '%', 'accuracy', 'target'], [s.n, 'answers', 'cards'], [Math.max(1, Math.round((Date.now() - s.t0) / 60000)) + ' min', 'time', 'timer']];
+
 // ---------------- session engine ----------------
 let SES = null;
 const FSRS_MODES = new Set(['review', 'lesson']);
@@ -1145,10 +1293,8 @@ function endSession() {
   if (!s) return go('#today');
   const pct = s.n ? Math.round(s.ok / s.n * 100) : 0;
   if (s.opts.onDone) return s.opts.onDone(pct, s);
-  view.innerHTML = `<h2>完成了！ Session done</h2><div class="card center"><div class="big md">${pct}%</div><p>${s.ok} / ${s.n} correct · ${Math.round((Date.now() - s.t0) / 60000)} min</p>
-    ${s.wrong.length ? `<p class="small muted">Missed: ${[...new Set(s.wrong)].map(id => esc((D.items.get(id) || D.ex.get(id) || {}).s || '')).filter(Boolean).join(' · ')}</p>` : ''}</div>
-    <a class="btn pri block" href="#today">继续 Continue</a>`;
-  checkStreak(); renderStreak();
+  const missed = [...new Set(s.wrong)].map(id => esc((D.items.get(id) || D.ex.get(id) || {}).s || '')).filter(Boolean);
+  doneScreen({ seal: '温故知新', title: '复习完成', sub: missed.length ? `Missed: <span class="hz">${missed.join(' · ')}</span>. They'll come back soon.` : 'Every card answered. They\'ll come back when you\'re about to forget them.', stats: sesStats(s), cta: '继续 Continue', href: '#today' });
 }
 function renderTask() {
   const s = SES;
@@ -1164,7 +1310,7 @@ function renderTask() {
   }
   const t = s.tasks[s.i];
   const total = s.tasks.length;
-  view.innerHTML = `<div class="prog"><div class="row"><button class="btn sm ic" data-act="quit" aria-label="end session">${ic('close')}</button><div class="grow bar"><i style="width:${Math.round(s.i / total * 100)}%"></i></div><span class="small muted">${s.i + 1}/${total}</span></div></div><div id="ex"></div>`;
+  view.innerHTML = `<div class="prog"><div class="row"><button class="btn sm ic" data-act="quit" aria-label="end session">${ic('close')}</button><div class="grow bar"><i style="width:${Math.round(s.i / total * 100)}%"></i></div>${s.combo >= 3 ? `<span class="combo" aria-label="${s.combo} right in a row">连对 ${s.combo}</span>` : `<span class="small muted">${s.i + 1}/${total}</span>`}</div></div><div id="ex"></div>`;
   const host = $('#ex');
   if (t.kind === 'intro') return exIntro(host, D.items.get(t.item));
   if (t.kind === 'custom') return t.run(host, res => finish(t, res));
@@ -1188,14 +1334,16 @@ function finish(t, res) {
   const host = $('#ex');
   if (!res.ok) s.wrong.push(t.ex || t.item);
   s.n++; if (res.ok) s.ok++;
+  s.combo = res.ok ? (s.combo || 0) + 1 : 0;
+  chime(res.ok);
   const sug = res.grade || (res.ok ? (res.tonesOff ? 2 : 3) : 1);
   const reveal = t.ex || !it.s ? '' : `<div class="row"><span class="hz" style="font-size:26px">${esc(it.s)}</span><span class="tc">${pyHTML(it.s, it.p)}</span><span class="grow"></span><button class="btn sm ic" data-act="say" data-t="${esc(it.s)}">${ic('play')}</button></div><div>${esc(it.en)}${it.zh ? ` <span class="muted">· ${esc(it.zh)}</span>` : ''}</div>`;
   const fb = document.createElement('div');
-  fb.className = 'fb ' + (res.ok ? 'ok' : 'no');
-  fb.innerHTML = `<b>${res.ok ? ic('check') + ' 对了' : ic('close') + ' 不对'}</b>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}
+  fb.className = 'fb sheetfb ' + (res.ok ? 'ok' : 'no');
+  fb.setAttribute('role', 'status');
+  fb.innerHTML = `<div class="fbh">${ic(res.ok ? 'check' : 'close')}<b>${res.ok ? (s.combo >= 3 ? `对了！连对 ${s.combo}` : '对了！') : '不对'}</b></div>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}
     ${FSRS_MODES.has(s.mode) && c ? `<div class="grades">${[1, 2, 3, 4].map(g => `<button class="btn${g === sug ? ' sug' : ''}" data-g="${g}">${['Again', 'Hard', 'Good', 'Easy'][g - 1]}<small>${nextLabel(c, g)}</small></button>`).join('')}</div>` : `<button class="btn pri block" data-g="${sug}">继续 Next</button>`}`;
   host.appendChild(fb);
-  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   if (!t.ex && it.s && !res.noAudio) say(it.s);
   $$('[data-g]', fb).forEach(b => b.onclick = () => grade(t, +b.dataset.g, res));
 }
@@ -1500,7 +1648,7 @@ function startLesson(l) {
     tasks.push(...shuffle(first));
   }
   for (const xid of l.ex || []) { const x = D.ex.get(xid); if (x) tasks.push(cardTask(addExCard(x), 'lesson')); }
-  startSession(tasks, 'lesson', { onDone: pct => { markLesson(l); view.innerHTML = `<h2>课完成！ Lesson done</h2><div class="card center"><div class="big md">${pct}%</div><p>${esc(l.title)}</p><p class="small muted">New cards now follow their own review schedule, one per skill.</p></div><a class="btn pri block" href="#unit/${l.unit}">继续 Back to unit</a>`; checkStreak(); renderStreak(); } });
+  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit }); } });
 }
 function examTasks(items, exs, n) {
   const tasks = [];
@@ -1520,14 +1668,16 @@ function startCheckpoint(u) {
   const tasks = examTasks(u.items, u.exercises || [], 24);
   startSession(tasks, 'check', { onDone: (pct, s) => {
     const prev = META.progress.units[u.id] || 0; META.progress.units[u.id] = Math.max(prev, pct); save();
-    view.innerHTML = `<h2>检测 Checkpoint: ${esc(u.title)}</h2><div class="card center"><div class="big md">${pct}%</div><p>${pct >= 85 ? ic('check') + ' Passed. The next unit is open.' : ic('close') + ' You need 85%. Review the weak items and try again.'}</p></div><a class="btn pri block" href="#unit/${u.id}">Back to unit</a>`;
+    doneScreen(pct >= 85 ? { seal: '过关斩将', title: '通过！', sub: `${esc(u.title)} checkpoint passed. The next unit is open.`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + u.id }
+      : { seal: '再接再厉', pass: false, title: '差一点', sub: `You need 85% to pass. Review your weak items, then try again.`, stats: sesStats(s), cta: 'Back to unit', href: '#unit/' + u.id });
   } });
 }
 function startStageExam(n) {
   const us = unitsOfStage(n);
   const tasks = examTasks(us.flatMap(u => u.items), us.flatMap(u => u.exercises || []), 40);
-  startSession(tasks, 'exam', { onDone: pct => { META.progress.stages[n] = Math.max(META.progress.stages[n] || 0, pct); save();
-    view.innerHTML = `<h2>阶段考试 Stage ${n} exam</h2><div class="card center"><div class="big md">${pct}%</div><p>${pct >= 85 ? 'Passed. The next stage is open.' : 'Not yet: 85% needed.'}</p></div><a class="btn pri block" href="#course">Course</a>`; } });
+  startSession(tasks, 'exam', { onDone: (pct, s) => { META.progress.stages[n] = Math.max(META.progress.stages[n] || 0, pct); save();
+    doneScreen(pct >= 85 ? { seal: '金榜题名', title: `第${n}阶段通过！`, sub: 'Stage exam passed. The next stage is open.', stats: sesStats(s), cta: '继续 Course', href: '#course' }
+      : { seal: '再接再厉', pass: false, title: '还差一点', sub: 'The stage exam needs 85%. Clear your weak items and try again.', stats: sesStats(s), cta: 'Course', href: '#course' }); } });
 }
 function startReviews(limit = 200) {
   const due = dueCards();
@@ -1555,22 +1705,18 @@ V.today = () => {
   const due = dueCards(), by = {}; due.forEach(c => by[c.skill] = (by[c.skill] || 0) + 1);
   const st = dayStat(), nl = nextLesson(), weakN = Object.keys(META.weak).length, newLeft = Math.max(0, S().newLimit - st.new);
   const goalPct = Math.min(100, Math.round(st.rev / S().goal * 100));
-  const nu = nl && D.unitById.get(nl.unit), first = nl && (nl.items || []).map(id => D.items.get(id)).find(Boolean);
-  const heroCh = (first ? [...first.s].find(Core.isHan) : nl && nl.type === 'text' ? [...D.texts.get(nl.text).title].find(Core.isHan) : null) || '学';
+  const nu = nl && D.unitById.get(nl.unit);
   const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言' };
   const reads = D.units.filter(unitUnlocked).flatMap(u => u.texts || []).slice(0, 10);
-  view.innerHTML = `<section class="hero"><svg class="roof" viewBox="0 0 340 74" aria-hidden="true"><path d="M86 19h168" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><path d="M86 19c-6-9-14-10-18-4M254 19c6-9 14-10 18-4" stroke="var(--ink)" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M92 20h156c16 18 44 30 84 33l-6 6H14l-6-6c40-3 68-15 84-33z" fill="var(--seal)"/><path d="M84 30h172M70 40h200M46 50h248" stroke="color-mix(in srgb,#000 22%,var(--seal))" stroke-width="1.5"/><rect x="40" y="58" width="260" height="5" fill="var(--gold)"/><rect x="40" y="63" width="260" height="9" fill="var(--seal)"/><path d="M60 63v9M110 63v9M170 63v9M230 63v9M280 63v9" stroke="var(--gold)" stroke-width="2"/></svg><p>${nl ? esc(nu.title) : '今天的课都学完了'}</p><div class="meta">${nl ? esc(nl.title) : 'All lessons done: add the next unit'}</div></section>
-  ${reads.length ? `<div class="hscroll">${reads.map(t => `<a class="hcard" href="#text/${t.id}"><span>${kinds[t.kind] || t.kind}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
-  <div class="card"><div class="row"><b class="grow">Daily goal</b><span class="small muted">${st.rev}/${S().goal} reviews</span></div><div class="bar" style="margin:6px 0"><i style="width:${goalPct}%"></i></div>
-    <div class="small muted">The streak counts only when the goal is met <i>and</i> the due queue is empty. New words never stand in for reviews.</div></div>
-  <div class="card"><div class="row"><b class="grow">复习 Reviews due</b><span class="big sm" style="margin:0">${due.length}</span></div>
-    <div class="row small muted">${['reading', 'writing', 'listening', 'speaking', 'drill'].map(k => `<span>${SK_ZH[k]} ${by[k] || 0}</span>`).join(' · ')}</div>
-    <button class="btn pri block" data-act="reviews" ${due.length ? '' : 'disabled'}>${due.length ? `Start reviews (${due.length})` : ic('check') + ' Queue clear'}</button></div>
-  <div class="card"><b>新课 Next lesson</b>
-    ${nl ? `<p class="hz">${esc(D.unitById.get(nl.unit).title)} · ${esc(nl.title)}</p>
-      ${due.length ? `<p class="small muted">Clear the ${due.length} due reviews first.</p>` : newLeft <= 0 && nl.type === 'new' ? `<p class="small muted">Daily new-word limit reached (${S().newLimit}). Change it in settings.</p>` : ''}
-      <button class="btn block ${due.length ? '' : 'pri'}" data-act="lesson" data-id="${nl.id}" ${due.length || (newLeft <= 0 && nl.type === 'new') ? 'disabled' : ''}>Start lesson</button>` : '<p class="muted">No lessons left. Add the next unit.</p>'}
-    <div class="small muted">${st.new} new today · limit ${S().newLimit}</div></div>
+  const sk = META.streak, live = sk.last === dayKey() || sk.last === dayKey(Date.now() - 864e5);
+  const canLesson = nl && !due.length && !(newLeft <= 0 && nl.type === 'new');
+  const cta = due.length ? `<button class="btn pri block cta" data-act="reviews">复习 Review ${due.length} card${due.length > 1 ? 's' : ''}</button>`
+    : canLesson ? `<button class="btn pri block cta" data-act="lesson" data-id="${nl.id}">开始 Start the lesson</button>`
+    : `<button class="btn block cta" disabled>${nl ? 'New-word limit reached for today' : 'All lessons done'}</button>`;
+  view.innerHTML = `<section class="hero3">${ROOF_SVG}<div class="gatewrap">${gateSVG(goalPct, st.rev, S().goal)}${lanternHTML(live ? sk.n : 0, live, sk.last === dayKey())}</div>
+    <div class="next">${nl ? `<span class="kick">第${nu.n}单元 ${esc(nu.title)}</span><b class="hz">${esc(nl.title)}</b>` : '<b>今天的课都学完了</b>'}</div>${cta}
+    <p class="note-s">${due.length ? `${['reading', 'writing', 'listening', 'speaking', 'drill'].filter(k => by[k]).map(k => `${SK_ZH[k]} ${by[k]}`).join('  ')}. Reviews come before new lessons.` : `${st.new} new today, limit ${S().newLimit}. The streak lantern lights once the goal is met with nothing due.`}</p></section>
+  ${reads.length ? `<h3>读一读 Read</h3><div class="hscroll">${reads.map(t => `<a class="hcard" href="#text/${t.id}"><span>${kinds[t.kind] || t.kind}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
   <div class="grid2"><button class="btn" data-act="weak">弱项 Weak (${weakN})</button><button class="btn" data-act="cramsel">突击 Cram</button></div>
   <h3>Next 7 days</h3>${forecastHTML(7)}`;
 };
@@ -1592,14 +1738,21 @@ V.course = () => {
 };
 V.unit = id => {
   const u = D.unitById.get(id); if (!u) return go('#course');
-  const ok = unitUnlocked(u);
-  view.innerHTML = `<h2 class="hz">${esc(u.title)} <span class="small muted">${esc(u.en)}</span></h2><p class="small">${esc(u.intro || '')}</p>
-  <div class="list">${u.lessons.map((l, i) => { const lk = !lessonUnlocked(l), dn = lessonDone(l.id);
-    return `<a href="javascript:void 0" data-act="${lk ? '' : 'lesson'}" data-id="${l.id}" class="${lk ? 'lock' : ''}"><span style="min-width:26px">${dn ? ic('check') : i + 1}</span><span class="grow">${esc(l.title)}<br><span class="small muted">${{ new: `${(l.items || []).length} new items`, text: 'reading & recitation', drill: `${(l.ex || []).length} drills`, scenario: 'role-play' }[l.type] || ''}</span></span>${lk ? ic('lock') : ic('chev')}</a>`; }).join('')}</div>
-  <button class="btn pri block" data-act="check" data-id="${u.id}" ${ok ? '' : 'disabled'}>检测 Checkpoint (85% to pass)${META.progress.units[u.id] != null ? ` · best ${META.progress.units[u.id]}%` : ''}</button>
+  const ok = unitUnlocked(u), done = u.lessons.filter(l => lessonDone(l.id)).length;
+  const cur = u.lessons.find(l => !lessonDone(l.id) && lessonUnlocked(l));
+  const glyph = l => l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : { text: '读', drill: '练', scenario: '说' }[l.type] || '学';
+  const kind = { new: 'new words', text: 'reading', drill: 'practice', scenario: 'role-play' };
+  const stops = u.lessons.map((l, i) => {
+    const st = lessonDone(l.id) ? 'done' : !lessonUnlocked(l) ? 'lock' : l === cur ? 'cur' : 'open';
+    return `<div class="stop" style="--x:${Math.round(Math.sin(i * 1.05) * 64)}px">${st === 'cur' ? '<span class="start">开始</span>' : ''}<button class="node ${st}" data-act="${st === 'lock' ? '' : 'lesson'}" data-id="${l.id}" aria-label="${esc(l.title)}, ${kind[l.type] || ''}${st === 'done' ? ', done' : st === 'lock' ? ', locked' : ''}">${st === 'lock' ? ic('lock') : st === 'done' ? ic('check') : `<span>${glyph(l)}</span>`}</button><small>${esc(l.title)}</small></div>`;
+  }).join('');
+  const sc = META.progress.units[u.id];
+  view.innerHTML = `<div class="ubanner"><span>第${u.stage}阶段 · 第${u.n}单元</span><h2 class="hz">${esc(u.title)}</h2><p>${esc(u.en)}</p><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><small>${done} of ${u.lessons.length} lessons</small></div>
+  <details class="uintro"><summary>About this unit</summary><p class="small">${esc(u.intro || '')}</p></details>
+  <div class="path">${stops}<div class="stop" style="--x:0px"><button class="node gatenode${sc >= 85 ? ' done' : ''}" data-act="${ok ? 'check' : ''}" data-id="${u.id}" aria-label="Checkpoint, 85% to pass"><span>考</span></button><small>检测 Checkpoint${sc != null ? `<br>best ${sc}%` : ''}</small></div></div>
   <button class="btn block" data-act="cram" data-id="${u.id}">突击 Cram this unit</button>
-  <h3>Texts</h3><div class="list">${(u.texts || []).map(t => `<a href="#text/${t.id}"><span class="grow hz">${esc(t.title)}</span><span class="tag">${esc(t.kind)}</span></a>`).join('')}</div>
-  ${u.scenario ? `<h3>Scenario</h3><div class="list"><a href="#scen/${u.scenario.id}"><span class="grow hz">${esc(u.scenario.title)}</span>›</a></div>` : ''}`;
+  ${(u.texts || []).length ? `<h3>Texts</h3><div class="hscroll">${u.texts.map(t => `<a class="hcard" href="#text/${t.id}"><span>${esc(t.kind)}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
+  ${u.scenario ? `<h3>Role-play</h3><div class="list"><a href="#scen/${u.scenario.id}">${ic('chat')}<span class="grow hz">${esc(u.scenario.title)}</span>${ic('chev')}</a></div>` : ''}`;
 };
 V.library = () => {
   const open = D.units.filter(unitUnlocked);
@@ -1758,6 +1911,7 @@ V.more = () => {
   view.innerHTML = `<h2>更多 More</h2><div class="list">${rows.map(([h, i, z, e]) => `<a href="${h}">${ic(i)}<span class="grow"><b class="hz">${z}</b> <span class="small muted">${e}</span></span>${ic('chev')}</a>`).join('')}</div>`;
 };
 V.scens = () => { view.innerHTML = `<h2>情景 Scenarios</h2><div class="list">${[...D.scen.values()].filter(s => unitUnlocked(D.unitById.get(s.unit))).map(s => `<a href="#scen/${s.id}"><span class="grow hz">${esc(s.title)}</span><span class="small muted">${META.progress.scen[s.id] != null ? META.progress.scen[s.id] + '%' : ''}</span>›</a>`).join('')}</div>`; };
+const RINGC = ['var(--seal)', 'var(--orange)', 'var(--gold)', 'var(--t4)'];
 V.dash = () => {
   const cs = [...CARDS.values()];
   const known = sk => cs.filter(c => c.skill === sk && c.st === 2).length, mature = sk => cs.filter(c => c.skill === sk && c.st === 2 && c.s >= 21).length;
@@ -1777,7 +1931,9 @@ V.dash = () => {
   view.innerHTML = `<h2>学习情况 Dashboard</h2>
   <div class="grid2"><div class="stat"><b>${words}</b>words (reading)</div><div class="stat"><b>${readChars.size}</b>characters recognised</div><div class="stat"><b>${writeChars.size}</b>characters you can handwrite</div><div class="stat"><b>${acc[1] ? Math.round(acc[0] / acc[1] * 100) : 0}%</b>accuracy, 14 days</div></div>
   <div class="card"><b>Level</b><p>Estimated <b>${hsk}</b>. Reading level of <b>${age}</b>.</p><p class="small muted">From words and characters at least in review in the reading skill.</p></div>
-  <div class="card"><b>Per skill</b> <span class="small muted">learned · mature (≥21 days)</span>${SKILLS.map(sk => `<div class="mast"><span>${SK_ZH[sk]} ${sk}</span><div class="bar"><i style="width:${Math.min(100, known(sk) / Math.max(1, cs.filter(c => c.skill === sk).length) * 100)}%"></i></div><span class="small">${known(sk)} · ${mature(sk)}</span></div>`).join('')}</div>
+  <div class="card skills"><svg viewBox="0 0 180 180" class="rings" role="img" aria-label="Share of cards learned per skill">${SKILLS.map((sk, i) => { const tot = Math.max(1, cs.filter(c => c.skill === sk).length), r = 80 - i * 17, C = 2 * Math.PI * r, f = known(sk) / tot;
+      return `<circle cx="90" cy="90" r="${r}" fill="none" stroke="var(--line2)" stroke-width="12"/><circle class="ring" cx="90" cy="90" r="${r}" fill="none" stroke="${RINGC[i]}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - f)).toFixed(1)}" transform="rotate(-90 90 90)" style="--c:${C.toFixed(1)}"/>`; }).join('')}</svg>
+    <div class="legend">${SKILLS.map((sk, i) => `<div><i style="background:${RINGC[i]}"></i><b>${SK_ZH[sk]}</b><span>${known(sk)} learned<br>${mature(sk)} solid</span></div>`).join('')}</div></div>
   <div class="card"><b>Tone accuracy (speaking)</b><div class="grid4" style="margin-top:8px">${tone}</div>${conf ? `<p class="small muted">Most common confusions: ${conf}</p>` : ''}</div>
   <h3>Reviews due, next 14 days</h3>${forecastHTML(14)}
   <div class="card"><b>Weakest items</b><div class="list">${weakest.map(c => { const it = D.items.get(c.item) || D.ex.get(c.item) || {}; return `<div class="li"><span class="hz">${esc(it.s || it.q || it.w || c.item)}</span><span class="grow small">${SK_ZH[c.skill]} · ${c.lapses} lapses · ${c.st === 2 ? Math.round(c.s) + 'd' : 'learning'}</span>${c.leech ? ic('alert') : ''}</div>`; }).join('') || '<p class="small muted">Nothing yet.</p>'}</div></div>
@@ -1819,6 +1975,7 @@ V.settings = () => {
      ? `<div class="vlist" role="radiogroup">${phoneVoices.map(v => `<button class="vrow" role="radio" aria-checked="${v.name === (TTS.voice && TTS.voice.name)}" data-voice="${esc(v.name)}"><span class="grow">${esc(v.name)}<span>${esc(v.lang)}${v.localService ? ' · on this phone' : ' · online'}</span></span>${ic('check')}</button>`).join('')}</div>`
      : `<span>No Chinese voice found on this phone. Samsung: Settings › General management › Text-to-speech › Preferred engine: Samsung TTS, then its gear › Install voice data › 中文 (中国). Then reopen this page.</span>`}</div>
    <div class="set col"><b>Normal speed</b>${seg('rate', [[0.7, '0.7×'], [0.8, '0.8×'], [0.9, '0.9×'], [1, '1×'], [1.1, '1.1×']])}</div>
+   ${tog('sfx', 'Sound effects', 'A short chime for right and wrong answers')}
    ${tog('native', 'Human recordings', 'Native speakers for syllables and words, when using the built-in voice')}
    <div class="set col"><b>Speech recognition</b><span>Off: you compare your recording with the model and grade yourself</span>${seg('sr', [['auto', 'On'], ['off', 'Off']])}</div>
    <button class="set" data-act="say" data-t="你好，我们开始学习吧。">${ic('play')}<span class="grow"><b>Test the voice</b><span>你好，我们开始学习吧。</span></span></button>
