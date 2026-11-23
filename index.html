@@ -308,6 +308,20 @@ canvas.brush{display:block;touch-action:none;cursor:crosshair}
 .points .pex{margin-top:8px;padding-left:12px;border-left:2px solid var(--seal);font-size:16px;color:var(--ink)}
 .points .pex span{font:500 13px var(--ui);color:var(--muted)}
 
+
+/* learning layer: remember-it, recap, goals */
+.memo{margin:8px 0 4px;padding:10px 12px;border-left:2px solid var(--seal);background:color-mix(in srgb,var(--seal) 5%,transparent);border-radius:0 10px 10px 0}
+.memo small{display:block;font:600 11px var(--ui);letter-spacing:.06em;color:var(--seal);margin-bottom:2px}
+.memo p{margin:3px 0;font-size:14px;line-height:1.5}.memo p span{color:var(--muted);font:500 12.5px var(--ui)}
+.recap{margin-top:8px}.recap h3 small{font:600 12px var(--ui);color:var(--muted);margin-left:4px}
+.rc{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.rc>b{font:700 24px var(--song);min-width:2.2em}.rc small{color:var(--muted)}
+.rc.miss>b{color:var(--seal)}
+.goals{list-style:none;padding:0;margin:14px 0;border-top:1px solid var(--line)}
+.goals li{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);font-size:15px}
+.goals li svg{width:18px;height:18px;color:var(--seal);flex:none}
+.goalw{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin:6px 0 16px;font:600 22px var(--song)}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -1348,11 +1362,18 @@ function chime(ok) {
   } catch (e) {}
 }
 // completion: a four-character seal stamps down (read right-to-left in columns, like a real chop)
-function doneScreen({ seal, title, sub, stats, cta, href, pass = true }) {
+function recapHTML(ids, wrong = new Set()) {
+  const its = [...new Set(ids)].map(id => D.items.get(id)).filter(it => it && it.s);
+  if (!its.length) return '';
+  const miss = its.filter(it => wrong.has(it.id)), solid = its.filter(it => !wrong.has(it.id));
+  const row = it => `<a class="rc ${wrong.has(it.id) ? 'miss' : ''}" href="#entry/${encodeURIComponent(it.id)}"><b class="hz">${esc(it.s)}</b><span class="grow"><span class="tc">${pyHTML(it.s, it.p)}</span><br><small>${esc(it.en)}</small></span><button class="btn sm ic" data-act="say" data-t="${esc(it.s)}" aria-label="play">${ic('play')}</button></a>`;
+  return `<div class="recap">${miss.length ? `<h3>再看一眼 · Look again <small>${miss.length}</small></h3><p class="small muted">Missed at least once. They come back sooner in your reviews.</p>${miss.map(row).join('')}` : ''}${solid.length ? `<h3>学会了 · Got it <small>${solid.length}</small></h3>${solid.map(row).join('')}` : ''}</div>`;
+}
+function doneScreen({ seal, title, sub, stats, cta, href, pass = true, extra = '' }) {
   view.innerHTML = `<section class="finish"><div class="stamp${pass ? '' : ' dim'}" aria-label="${esc(seal)}">${[...seal].map(c => `<i>${c}</i>`).join('')}</div>
     <h2>${title}</h2><p class="muted">${sub}</p>
     <div class="tiles3">${stats.map(([v, l, i]) => `<div class="tilex">${ic(i)}<b>${v}</b><span>${l}</span></div>`).join('')}</div>
-    <a class="btn block cta" href="${href}">${cta}</a></section>`;
+    <a class="btn block cta" href="${href}">${cta}</a></section>${extra}`;
   checkStreak(); renderStreak();
 }
 const sesStats = s => [[(s.n ? Math.round(s.ok / s.n * 100) : 0) + '%', 'accuracy', 'target'], [s.n, 'answers', 'cards'], [Math.max(1, Math.round((Date.now() - s.t0) / 60000)) + ' min', 'time', 'timer']];
@@ -1375,8 +1396,8 @@ function endSession() {
   if (!s) return go('#today');
   const pct = s.n ? Math.round(s.ok / s.n * 100) : 0;
   if (s.opts.onDone) return s.opts.onDone(pct, s);
-  const missed = [...new Set(s.wrong)].map(id => esc((D.items.get(id) || D.ex.get(id) || {}).s || '')).filter(Boolean);
-  doneScreen({ seal: '温故知新', title: '复习完成', sub: missed.length ? `Missed: <span class="hz">${missed.join(' · ')}</span>. They'll come back soon.` : 'Every card answered. They\'ll come back when you\'re about to forget them.', stats: sesStats(s), cta: '继续 Continue', href: '#today' });
+  const wrong = new Set(s.wrong);
+  doneScreen({ seal: '温故知新', title: '复习完成', sub: wrong.size ? 'Missed words come back sooner. Tap one to study it.' : 'Every card answered. They\'ll come back when you\'re about to forget them.', stats: sesStats(s), cta: '继续 Continue', href: '#today', extra: recapHTML(s.tasks.map(t => t.item).filter(id => wrong.has(id)), wrong) });
 }
 function renderTask() {
   const s = SES;
@@ -1397,6 +1418,13 @@ function renderTask() {
   if (t.kind === 'intro') return exIntro(host, D.items.get(t.item));
   if (t.kind === 'info') { host.innerHTML = t.html + `<button class="btn pri block" data-r="next">明白了 Got it</button>`; $('[data-r=next]', host).onclick = () => { SES.i++; renderTask(); }; return; }
   if (t.kind === 'custom') return t.run(host, res => finish(t, res));
+  if (t.kind === 'recall') {
+    const wrong = new Set(s.wrong), pool = t.pool.map(id => D.items.get(id)).filter(Boolean);
+    const pickd = [...pool.filter(it => wrong.has(it.id)), ...shuffle(pool.filter(it => !wrong.has(it.id)))].slice(0, Math.min(6, Math.max(4, wrong.size)));
+    const rt = shuffle(pickd).map((it, k) => { const c = CARDS.get(it.id + '|speaking') || CARDS.get(it.id + '|reading'); return { item: it.id, card: null, tmpCard: c, kind: k % 2 ? 'handwrite' : 'speakMeaning' }; });
+    s.tasks.splice(s.i, 1, { kind: 'info', html: `<p class="muted center">最后 · Final round</p><h2 class="display" style="font-size:28px;text-align:center">From memory</h2><p class="center muted">No choices this time. You see the meaning; say or write the Chinese. Words you missed come first.</p>` }, ...rt);
+    return renderTask();
+  }
   const c = CARDS.get(t.card) || t.tmpCard;
   if (t.ex) { const x = D.ex.get(t.ex); return x ? exDrill(host, x, res => finish(t, res)) : skip(); }
   const it = D.items.get(t.item);
@@ -1406,6 +1434,11 @@ function renderTask() {
   try { (EX[t.kind] || EX.typePinyin)(host, it, res => finish(t, res), c); }
   catch (e) { console.warn('exercise fallback', t.kind, e); t.kind = 'typePinyin'; EX.typePinyin(host, it, res => finish(t, res), c); }
   function skip() { s.i++; renderTask(); }
+}
+function rememberHTML(it) { // how to hold on to it: parts + mnemonic per character, the usage note, one sentence
+  const parts = [...new Set([...it.s].filter(Core.isHan))].slice(0, 3).map(ch => { const v = D.chars.get(ch); return v && (v.h || (v.c || []).length) ? `<p><b class="hz">${ch}</b>${(v.c || []).length ? ` = ${esc(v.c.join(' + '))}` : ''}${v.h ? ` · ${esc(v.h)}` : ''}</p>` : ''; }).join('');
+  const e = (it.ex || [])[0];
+  return parts || it.note || e ? `<div class="memo"><small>记住 · Remember it</small>${parts}${it.note ? `<p>${esc(it.note)}</p>` : ''}${e ? `<p class="hz">${esc(e.zh)} <span>${esc(e.en)}</span></p>` : ''}</div>` : '';
 }
 function leechHelp(it) {
   const parts = [...it.s].filter(Core.isHan).map(ch => { const v = D.chars.get(ch); return v ? `<b class="hz">${ch}</b> = ${esc((v.c || []).join(' + '))} ${v.h ? '· ' + esc(v.h) : ''}` : ''; }).filter(Boolean).join('<br>');
@@ -1420,11 +1453,12 @@ function finish(t, res) {
   s.combo = res.ok ? (s.combo || 0) + 1 : 0;
   chime(res.ok);
   const sug = res.grade || (res.ok ? (res.tonesOff ? 2 : 3) : 1);
+  const memo = res.ok || t.ex || !it.s ? '' : rememberHTML(it);
   const reveal = t.ex || !it.s ? '' : `<div class="row"><span class="hz" style="font-size:26px">${esc(it.s)}</span><span class="tc">${pyHTML(it.s, it.p)}</span><span class="grow"></span><button class="btn sm ic" data-act="say" data-t="${esc(it.s)}">${ic('play')}</button></div><div>${esc(it.en)}${it.zh ? ` <span class="muted">· ${esc(it.zh)}</span>` : ''}</div>`;
   const fb = document.createElement('div');
   fb.className = 'fb sheetfb ' + (res.ok ? 'ok' : 'no');
   fb.setAttribute('role', 'status');
-  fb.innerHTML = `<div class="fbh">${ic(res.ok ? 'check' : 'close')}<b>${res.ok ? (s.combo >= 3 ? `对了！连对 ${s.combo}` : '对了！') : '不对'}</b></div>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}
+  fb.innerHTML = `<div class="fbh">${ic(res.ok ? 'check' : 'close')}<b>${res.ok ? (s.combo >= 3 ? `对了！连对 ${s.combo}` : '对了！') : '不对'}</b></div>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}${memo}
     ${FSRS_MODES.has(s.mode) && c ? `<div class="grades">${[1, 2, 3, 4].map(g => `<button class="btn${g === sug ? ' sug' : ''}" data-g="${g}">${['Again', 'Hard', 'Good', 'Easy'][g - 1]}<small>${nextLabel(c, g)}</small></button>`).join('')}</div>` : `<button class="btn pri block" data-g="${sug}">继续 Next</button>`}`;
   host.appendChild(fb);
   if (!t.ex && it.s && !res.noAudio) say(it.s);
@@ -1750,6 +1784,11 @@ function startLesson(l) {
   dayStat().new += items.filter(it => !CARDS.has(it.id + '|' + skillsFor(it)[0])).length;
   items.forEach(addItemCards);
   const T = (it, sk, kind) => { const c = CARDS.get(it.id + '|' + sk); return c ? { ...cardTask(c, 'lesson'), kind } : null; };
+  const words0 = items.filter(it => it.k !== 'syl');
+  // 0. the goal: what you'll be able to do at the end
+  tasks.push({ kind: 'info', html: `<p class="muted center">本课目标 · This lesson</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:6px">${esc(l.title)}</h2>
+    <ul class="goals"><li>${ic('cards')} Recognise ${items.length} new ${words0.length ? 'words' : 'syllables'} by sound and sight</li>${words0.length ? `<li>${ic('chat')} Use them in real sentences</li><li>${ic('mic')} Say them with the right tones</li><li>${ic('note')} Write them stroke by stroke</li>` : `<li>${ic('mic')} Hear and say each tone</li>`}<li>${ic('target')} Recall them from memory at the end</li></ul>
+    <div class="goalw">${items.map(it => `<span class="hz">${esc(it.s)}</span>`).join('')}</div>` });
   // 1. meet the words four at a time, each followed by a quick check
   for (let k = 0; k < items.length; k += 4) {
     const chunk = items.slice(k, k + 4);
@@ -1770,7 +1809,9 @@ function startLesson(l) {
   withEx.slice(0, 2).forEach(it => practice.push(T(it, 'speaking', 'speakSentence')));
   tasks.push(...shuffle(practice.filter(Boolean)));
   for (const xid of l.ex || []) { const x = D.ex.get(xid); if (x) tasks.push(cardTask(addExCard(x), 'lesson')); }
-  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit }); } });
+  // 4. from memory: meaning → Chinese, missed words first (built when reached, from this session's mistakes)
+  if (words0.length) tasks.push({ kind: 'recall', pool: words0.map(it => it.id) });
+  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
 }
 function examTasks(items, exs, n) {
   const tasks = [];
@@ -1842,7 +1883,7 @@ V.today = () => {
     ${cta}
     <p class="note-s">${due.length ? `${['reading', 'writing', 'listening', 'speaking', 'drill'].filter(k => by[k]).map(k => `${SK_ZH[k]} ${by[k]}`).join('　')}. Reviews come before new lessons.` : `The streak counts once the goal is met with nothing due.`}</p></section>
   ${reads.length ? `<h3>读一读 · Read</h3><div class="hscroll">${reads.map(t => `<a class="hcard" data-w="${esc([...t.title].find(Core.isHan) || '')}" href="#text/${t.id}"><span>${kinds[t.kind] || t.kind}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
-  <h3>练习 · Practice</h3><div class="grid2"><button class="btn" data-act="weak">弱项 ${weakN}</button><button class="btn" data-act="cramsel">突击 Cram</button></div>
+  <h3>练习 · Practice</h3><div class="grid2"><a class="btn" href="#mistakes">错题本 ${weakN}</a><button class="btn" data-act="cramsel">突击 Cram</button></div>
   <h3>未来七天 · Next 7 days</h3>${forecastHTML(7)}`;
 };
 function forecastHTML(days) {
@@ -2037,11 +2078,19 @@ V.entry = id => {
     ${it.note ? `<div class="card small">${ic('hint')} ${esc(it.note)}</div>` : ''}
     <div class="card"><b>Mastery</b>${skillsFor(it).map(sk => { const c = CARDS.get(it.id + '|' + sk); const s = c && c.st === 2 ? c.s : 0;
       return `<div class="mast"><span>${SK_ZH[sk]} ${sk}</span><div class="bar"><i style="width:${Math.min(100, s / 60 * 100)}%"></i></div><span class="small muted">${!c ? '—' : c.st === 0 ? 'new' : c.st === 2 ? Math.round(s) + 'd' : 'learning'}${c && c.leech ? ' ' + ic('alert') : ''}</span></div>`; }).join('')}
-      ${CARDS.has(it.id + '|' + skillsFor(it)[0]) ? '' : `<button class="btn pri block" data-act="adddeck" data-id="${esc(it.id)}">+ Add to my deck</button>`}</div>`;
+      ${CARDS.has(it.id + '|' + skillsFor(it)[0]) ? `<button class="btn pri block" data-act="drillone" data-id="${esc(it.id)}">${ic('target')} Practise this word</button>` : `<button class="btn pri block" data-act="adddeck" data-id="${esc(it.id)}">+ Add to my deck</button>`}</div>`;
   animateChars($('[data-r=anim]'), it.s);
 };
+V.mistakes = () => { // 错题本: every card you keep missing, why, and one tap to practise
+  const rows = Object.entries(META.weak).map(([id, w]) => ({ id, w, c: CARDS.get(id) })).filter(r => r.c).sort((a, b) => b.w.n - a.w.n || b.w.t - a.w.t);
+  view.innerHTML = `<section class="uhead"><p class="meta">错题本</p><h2 class="display">Mistakes</h2><p class="en">What you keep missing, and why</p></section>
+    <p class="uintro">A card leaves this list after three right answers in a row. Practising here doesn't change your review schedule, so drill as often as you like.</p>
+    ${rows.length ? `<button class="btn block cta" data-act="weak">练习全部 Practise all ${rows.length}</button><div class="list">${rows.map(({ id, w, c }) => { const it = D.items.get(c.item) || D.ex.get(c.item) || {};
+      return `<a href="${D.items.has(c.item) ? '#entry/' + encodeURIComponent(c.item) : 'javascript:void 0'}" class="li"><span class="hz" style="min-width:2.4em">${esc(it.s || it.zh || it.q || '')}</span><span class="grow"><span class="small"><b>${SK_ZH[c.skill]}</b> ${esc(c.skill)} · missed ${w.n}× · ${w.ok}/3 back on track</span>${w.why ? `<br><span class="small muted">${esc(w.why)}</span>` : ''}</span></a>`; }).join('')}</div>`
+    : `<div class="card center"><p>No mistakes on file.</p><p class="small muted">Anything you get wrong in lessons or reviews lands here with the reason.</p></div>`}`;
+};
 V.more = () => {
-  const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
+  const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
   view.innerHTML = `<h2>更多 More</h2><div class="list">${rows.map(([h, i, z, e]) => `<a href="${h}">${ic(i)}<span class="grow"><b class="hz">${z}</b> <span class="small muted">${e}</span></span>${ic('chev')}</a>`).join('')}</div>`;
 };
 V.scens = () => { view.innerHTML = `<h2>情景 Scenarios</h2><div class="list">${[...D.scen.values()].filter(s => unitUnlocked(D.unitById.get(s.unit))).map(s => `<a href="#scen/${s.id}"><span class="grow hz">${esc(s.title)}</span><span class="small muted">${META.progress.scen[s.id] != null ? META.progress.scen[s.id] + '%' : ''}</span>›</a>`).join('')}</div>`; };
@@ -2062,7 +2111,15 @@ V.dash = () => {
   const weakest = cs.filter(c => c.st > 0).sort((a, b) => (b.lapses - a.lapses) || (a.s - b.s)).slice(0, 12);
   const days = Object.entries(META.stats.days).sort().slice(-14);
   const acc = days.reduce((a, [, d]) => [a[0] + d.ok, a[1] + d.rev], [0, 0]);
+  const due = dueCards().length, weakN = Object.keys(META.weak).length;
+  const toneWorst = [1, 2, 3, 4].map(t => [t, META.stats.tone[t]]).filter(([, r]) => r && r.n >= 5).sort((a, b) => a[1].ok / a[1].n - b[1].ok / b[1].n)[0];
+  const skillLow = SKILLS.filter(sk => cs.some(c => c.skill === sk)).sort((a, b) => known(a) / Math.max(1, cs.filter(c => c.skill === a).length) - known(b) / Math.max(1, cs.filter(c => c.skill === b).length))[0];
+  const next = [due && `<button class="btn block cta" data-act="reviews">${ic('cards')} 复习 ${due} due cards first</button>`,
+    weakN && `<a class="btn block" href="#mistakes">${ic('alert')} 错题本: ${weakN} card${weakN > 1 ? 's' : ''} you keep missing</a>`,
+    toneWorst && toneWorst[1].ok / toneWorst[1].n < 0.8 && `<button class="btn block" data-act="tonedrill" data-t="${toneWorst[0]}">${ic('tones')} Tone ${toneWorst[0]} is your weakest (${Math.round(toneWorst[1].ok / toneWorst[1].n * 100)}%): ear drill</button>`,
+    !due && nextLesson() && `<button class="btn block" data-act="lesson" data-id="${nextLesson().id}">${ic('play')} Next lesson: ${esc(nextLesson().title)}</button>`].filter(Boolean);
   view.innerHTML = `<h2>学习情况 Dashboard</h2>
+  ${next.length ? `<div class="card"><b>下一步 · What to do next</b>${skillLow ? `<p class="small muted">Your least-developed skill is ${SK_ZH[skillLow]} ${skillLow}. Lessons and reviews mix it in.</p>` : ''}${next.join('')}</div>` : ''}
   <div class="grid2"><div class="stat"><b>${words}</b>words (reading)</div><div class="stat"><b>${readChars.size}</b>characters recognised</div><div class="stat"><b>${writeChars.size}</b>characters you can handwrite</div><div class="stat"><b>${acc[1] ? Math.round(acc[0] / acc[1] * 100) : 0}%</b>accuracy, 14 days</div></div>
   <div class="card"><b>Level</b><p>Estimated <b>${hsk}</b>. Reading level of <b>${age}</b>.</p><p class="small muted">From words and characters at least in review in the reading skill.</p></div>
   <div class="card skills"><svg viewBox="0 0 180 180" class="rings" role="img" aria-label="Share of cards learned per skill">${SKILLS.map((sk, i) => { const tot = Math.max(1, cs.filter(c => c.skill === sk).length), r = 80 - i * 17, C = 2 * Math.PI * r, f = known(sk) / tot;
@@ -2070,7 +2127,7 @@ V.dash = () => {
     <div class="legend">${SKILLS.map((sk, i) => `<div><i style="background:${RINGC[i]}"></i><b>${SK_ZH[sk]}</b><span>${known(sk)} learned<br>${mature(sk)} solid</span></div>`).join('')}</div></div>
   <div class="card"><b>Tone accuracy (speaking)</b><div class="grid4" style="margin-top:8px">${tone}</div>${conf ? `<p class="small muted">Most common confusions: ${conf}</p>` : ''}</div>
   <h3>Reviews due, next 14 days</h3>${forecastHTML(14)}
-  <div class="card"><b>Weakest items</b><div class="list">${weakest.map(c => { const it = D.items.get(c.item) || D.ex.get(c.item) || {}; return `<div class="li"><span class="hz">${esc(it.s || it.q || it.w || c.item)}</span><span class="grow small">${SK_ZH[c.skill]} · ${c.lapses} lapses · ${c.st === 2 ? Math.round(c.s) + 'd' : 'learning'}</span>${c.leech ? ic('alert') : ''}</div>`; }).join('') || '<p class="small muted">Nothing yet.</p>'}</div></div>
+  <div class="card"><b>Weakest items</b><div class="list">${weakest.map(c => { const it = D.items.get(c.item) || D.ex.get(c.item) || {}; return `<a class="li" href="${D.items.has(c.item) ? '#entry/' + encodeURIComponent(c.item) : 'javascript:void 0'}"><span class="hz">${esc(it.s || it.q || it.w || c.item)}</span><span class="grow small">${SK_ZH[c.skill]} · ${c.lapses} lapses · ${c.st === 2 ? Math.round(c.s) + 'd' : 'learning'}</span>${c.leech ? ic('alert') : ''}</a>`; }).join('') || '<p class="small muted">Nothing yet.</p>'}</div></div>
   <div class="card small muted">Streak ${META.streak.n} · ${cs.length} cards · ${Object.keys(META.progress.lessons).length} lessons done</div>`;
 };
 // 拼音总览: every initial and final, each played in all four tones, from the syllable table + recordings
@@ -2224,6 +2281,12 @@ const ACT = {
   trad: el => toast('繁體: ' + el.dataset.t),
   showtr: el => { const d = el.closest('.bub').querySelector('.small'); d.hidden = !d.hidden; },
   look: el => lookup(el.dataset.w, el.dataset.p),
+  drillone: el => { const it = D.items.get(el.dataset.id); if (!it) return; // every skill once, off the schedule
+    startSession(skillsFor(it).map(sk => CARDS.get(it.id + '|' + sk)).filter(Boolean).map(c => ({ ...cardTask(c, 'cram'), kind: chooseKind({ ...c, reps: 3, st: 2, s: 10 }, it, 'cram') })), 'cram', { onDone: () => go('#entry/' + encodeURIComponent(it.id)) }); },
+  tonedrill: el => { const t = +el.dataset.t; // hear words with this tone, name the tones
+    const its = [...CARDS.values()].filter(c => c.st > 0 && c.skill === 'listening').map(c => D.items.get(c.item)).filter(it => it && (syls(it.s, it.p) || []).some(x => x.sp === t));
+    if (!its.length) return toast('Learn a few words with this tone first');
+    startSession(sample(its, 15).map(it => ({ item: it.id, card: null, tmpCard: CARDS.get(it.id + '|listening'), kind: 'toneId' })), 'cram'); },
   adddeck: el => { const it = D.items.get(el.dataset.id); if (it) learnNow(it); },
   rpy: el => { READ.py = !READ.py; $('#rd').classList.toggle('nopy', !READ.py); el.classList.toggle('on', READ.py); },
   rtr: el => { READ.tr = !READ.tr; $$('#rd .tr').forEach(e => e.hidden = !READ.tr); el.classList.toggle('on', READ.tr); },
