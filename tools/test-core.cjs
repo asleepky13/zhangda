@@ -123,3 +123,35 @@ t('pitch: yin + tones', () => {
 });
 console.log(`core: ${n} test groups passed`);
 { const r = C.scoreHeard(C.align('谢谢', 'xiè xie'), ['xie4', 'xie4'].map(C.parseSyl)); assert.strictEqual(r.tone, 1, 'neutral tone tolerated'); console.log('neutral-tone grading ok'); }
+// realistic tone variants with jitter: accuracy per variant, with and without a speaker baseline
+{
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5);
+  const B = 200, st = f => 12 * Math.log2(f);
+  const syl = (shape, t0, dur, gapAt) => { const out = []; for (let k = 0; k <= 24; k++) { const x = k / 24; if (gapAt && x > gapAt && x < gapAt + 0.22) continue; out.push({ t: t0 + x * dur, f: B * Math.pow(2, (shape(x) + rnd() * 0.8) / 12), e: 0.1 }); } return out; };
+  const V = {
+    'T3 classic 214': [3, x => x < 0.55 ? -2 - 7 * x : -5.9 + 11 * (x - 0.55)],
+    'T3 late dip 213': [3, x => x < 0.72 ? -2.5 - 4.5 * x : -5.7 + 13 * (x - 0.72)],
+    'T3 shallow 212': [3, x => x < 0.5 ? -3 - 6 * x : -6 + 5 * (x - 0.5)],
+    'T3 creaky': [3, x => x < 0.5 ? -3 - 7 * x : -6.5 + 6 * (x - 0.5), 0.42],
+    'T2 with dip': [2, x => x < 0.25 ? -1 - 3 * x : -1.75 + 8.5 * (x - 0.25)],
+    'T2 plain': [2, x => -1.5 + 7 * x],
+    'T4': [4, x => 5 - 11 * x],
+    'T1 level': [1, x => 4.2 - 0.6 * x],
+  };
+  const report = [];
+  for (const [name, [want, f, gap]] of Object.entries(V)) for (const withBase of [false, true]) {
+    let hit = 0; const N = 25;
+    for (let r = 0; r < N; r++) {
+      // syllable followed by a mid level reference syllable, like a real two-syllable word
+      const track = [...syl(f, 0, 0.36, gap), ...syl(() => 0.5, 0.55, 0.3)];
+      const seg = C.pitchSegments(track, 2)[0];
+      if (C.classifyTone(seg, withBase ? { base: st(B) } : {}).tone === want) hit++;
+    }
+    report.push(`${name}${withBase ? ' +base' : ''}: ${hit}/${N}`);
+    assert.ok(hit / N >= 0.88, `${name}${withBase ? ' with base' : ''}: only ${hit}/${N}`);
+  }
+  // half-third: low falling 3rd tone before another tone; only distinguishable from T4/T1 with a baseline
+  let hh = 0; for (let r = 0; r < 25; r++) { const track = [...syl(x => -3 - 3 * x, 0, 0.3), ...syl(x => 4, 0.5, 0.3)]; if (C.classifyTone(C.pitchSegments(track, 2)[0], { base: st(B) }).tone === 3) hh++; }
+  report.push(`T3 half-third +base: ${hh}/25`); assert.ok(hh >= 22, 'half-third ' + hh);
+  console.log('tone variants:\n  ' + report.join('\n  '));
+}

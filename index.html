@@ -386,7 +386,7 @@ const Core = (() => {
   }
   const retrievability = (c, now = Date.now()) => c.st === 2 ? retr(Math.max(0, (now - c.last) / DAY), c.s) : 0;
   // ---------- pitch ----------
-  function yin(buf, sr, fmin = 70, fmax = 500, thr = 0.15) {
+  function yin(buf, sr, fmin = 55, fmax = 500, thr = 0.2) {
     const n = buf.length >> 1, x = new Float32Array(n); // downsample ×2
     for (let i = 0; i < n; i++) x[i] = (buf[2 * i] + buf[2 * i + 1]) / 2;
     sr /= 2;
@@ -436,28 +436,42 @@ const Core = (() => {
       let v = r.pts.map(p => st(p.f) - ref);
       v = v.map((_, i) => median(v.slice(Math.max(0, i - 2), i + 3))); // median filter kills octave blips
       const span = (r.end - r.start) || 1;
-      return { dur: r.end - r.start, pts: r.pts.map((p, i) => ({ t: (p.t - r.start) / span, v: v[i] })) };
+      let gap = 0; for (let i = 1; i < r.pts.length; i++) gap = Math.max(gap, r.pts[i].t - r.pts[i - 1].t);
+      return { dur: r.end - r.start, ref, gap, pts: r.pts.map((p, i) => ({ t: (p.t - r.start) / span, v: v[i] })) };
     });
   }
-  function classifyTone(seg) {
-    const v = seg.pts.map(p => p.v), n = v.length;
-    if (n < 3) return { tone: 0 };
-    const k = Math.max(1, Math.round(n * 0.2)), lo = Math.floor(n * 0.1), hi = n - lo;
-    const core = v.slice(lo, hi).length >= 3 ? v.slice(lo, hi) : v;
-    const m = core.length, kk = Math.max(1, Math.round(m * 0.25));
-    const start = core.slice(0, kk).reduce((a, b) => a + b, 0) / kk, end = core.slice(-kk).reduce((a, b) => a + b, 0) / kk;
-    let min = Infinity, mi = 0; core.forEach((x, i) => { if (x < min) { min = x; mi = i; } });
-    const max = Math.max(...core), mean = core.reduce((a, b) => a + b, 0) / m, pos = mi / (m - 1 || 1);
-    const range = max - min, rise = end - start;
-    let tone;
-    if (seg.dur < 0.08 && range < 2) tone = 5;
-    else if (-rise > 3 && pos > 0.55) tone = 4;
-    else if (pos > 0.2 && pos < 0.8 && start - min > 1.5 && end - min > 1.5) tone = 3;
-    else if (rise > 2.5) tone = (start - min > 1.5 && pos > 0.2) ? 3 : 2;
-    else if (range < 2.5) tone = mean > -1.5 ? 1 : 3;
-    else if (mean < -2.5 && Math.abs(rise) < 3.5) tone = 3;
-    else tone = rise > 0 ? 2 : 4;
-    return { tone, start, end, min, pos, range, mean };
+  // Tone templates in Chao numbers (1 low … 5 high). 6 = half-third (21), the 3rd tone before another tone.
+  const TPL = { 1: [[0, 4.6], [1, 4.5]], 2: [[0, 3], [0.3, 2.7], [1, 5]], 3: [[0, 2.4], [0.6, 1], [1, 3.6]], 6: [[0, 2.4], [1, 1]], 4: [[0, 5], [1, 1.4]] };
+  const tplAt = (pts, t) => { for (let i = 1; i < pts.length; i++) if (t <= pts[i][0]) { const [t0, a] = pts[i - 1], [t1, b] = pts[i]; return a + (b - a) * (t - t0) / (t1 - t0 || 1); } return pts[pts.length - 1][1]; };
+  // Fit each template to the contour (best pitch shift and range scale). With a speaker baseline (semitones of
+  // the speaker's mid pitch) register counts: a low flat syllable reads as a half-third, a high one as tone 1.
+  // ponytail: template fitting, not a trained model; a small tone classifier trained on recordings is the upgrade
+  function classifyTone(seg, opts = {}) {
+    const P = seg.pts;
+    if (!P || P.length < 3) return { tone: 0, conf: 0 };
+    if (seg.dur < 0.08) return { tone: 5, conf: 0.3 };
+    const K = 12, v = [];
+    for (let k = 0; k < K; k++) { const t = k / (K - 1); let best = P[0], bd = 9; for (const q of P) { const dd = Math.abs(q.t - t); if (dd < bd) { bd = dd; best = q; } } v.push(best.v); }
+    const w = v.map((_, k) => (k === 0 || k === K - 1) ? 0.4 : 1);
+    const hasBase = opts.base != null && seg.ref != null;
+    const off = hasBase ? seg.ref - opts.base : 0, maxShift = hasBase ? 2 : 6;
+    const dist = {};
+    for (const [tn, pts] of Object.entries(TPL)) {
+      let best = Infinity;
+      for (const sc of [0.55, 0.75, 1, 1.3]) {
+        const tv = v.map((_, k) => (tplAt(pts, k / (K - 1)) - 3) * 2.4 * sc);
+        let sw = 0, sd = 0; v.forEach((x, k) => { sd += w[k] * (x + off - tv[k]); sw += w[k]; });
+        const shift = Math.max(-maxShift, Math.min(maxShift, sd / sw));
+        let e = 0; v.forEach((x, k) => { const r = x + off - shift - tv[k]; e += w[k] * r * r; });
+        e = e / sw + (hasBase ? 0.12 : 0.02) * shift * shift;
+        if (e < best) best = e;
+      }
+      dist[tn] = best;
+    }
+    if (seg.gap > 0.05) { dist[3] *= 0.6; dist[6] *= 0.6; } // a creaky voice break mid-syllable is a classic 3rd tone
+    const d3 = Math.min(dist[3], dist[6]);
+    const rank = [[1, dist[1]], [2, dist[2]], [3, d3], [4, dist[4]]].sort((x, y) => x[1] - y[1]);
+    return { tone: rank[0][0], half: dist[6] < dist[3], conf: (rank[1][1] - rank[0][1]) / (rank[1][1] + rank[0][1] + 0.01), dist };
   }
   const CHAO = { 1: [5, 5], 2: [3, 5], 3: [2, 1, 4], 4: [5, 1], h: [2, 1, 1] };
   const NEUTRAL_AFTER = { 1: 2, 2: 3, 3: 4, 4: 1, 5: 2 };
@@ -708,7 +722,7 @@ const Mic = {
       const t = (performance.now() - t0) / 1000;
       if (t < 0.25) { floor = Math.max(floor, e * 1.8); n++; }
       const f = e > Math.max(0.008, floor) ? Core.yin(buf, this.ctx.sampleRate) : 0;
-      this.track.push({ t, f: f > 60 && f < 520 ? f : 0, e });
+      this.track.push({ t, f: f > 50 && f < 520 ? f : 0, e });
       onLevel && onLevel(e);
       this.raf = requestAnimationFrame(loop);
     };
@@ -805,12 +819,20 @@ function speakPanel(host, target, cb) {
   }
   function analyse(track, url, alts, srErr) {
     const segs = Core.pitchSegments(track, ts.length);
-    const tones = ts.map((s, i) => { const seg = segs[i]; const got = seg ? Core.classifyTone(seg).tone : 0; if (seg) seg.got = got;
+    // learn the speaker's mid pitch from multi-syllable utterances (single syllables are biased by their tone)
+    const V = META.voice || (META.voice = { base: null, n: 0 });
+    const base = V.n >= 3 ? V.base : undefined;
+    if (segs.length >= 2 && segs[0].ref) { V.base = V.n ? V.base * 0.8 + segs[0].ref * 0.2 : segs[0].ref; V.n++; }
+    const tones = ts.map((s, i) => {
+      const seg = segs[i]; const c = seg ? Core.classifyTone(seg, { base }) : { tone: 0, conf: 0 }; const got = c.tone; if (seg) seg.got = got;
       const exp = s.sp;
-      return { exp, got, ok: got ? (exp === 5 || got === exp) : null, base: s.base }; });
-    // record tone stats for confident detections
-    for (const t of tones) if (t.got && t.exp !== 5) { const r = META.stats.tone[t.exp] || (META.stats.tone[t.exp] = { n: 0, ok: 0 }); r.n++; if (t.ok) r.ok++; if (!t.ok) META.stats.conf[t.exp + '>' + t.got] = (META.stats.conf[t.exp + '>' + t.got] || 0) + 1; }
-    const toneLine = tones.map(t => `<span class="t${t.got || 5}">${t.got ? 'T' + t.got : '?'}</span>`).join(' ');
+      const accept = exp === 5 ? [1, 2, 3, 4, 5] : s.tone === 3 && exp === 2 ? [2, 3] : [exp]; // 3+3 sandhi: either is fine
+      // confident and wrong = wrong; unsure or a near miss = close (not counted against you)
+      const verdict = !got ? null : accept.includes(got) ? 'ok' : c.conf >= 0.3 ? 'wrong' : 'close';
+      return { exp, got, conf: c.conf, verdict, ok: verdict === null ? null : verdict !== 'wrong', base: s.base };
+    });
+    for (const t of tones) if (t.verdict && t.verdict !== 'close' && t.exp !== 5) { const r = META.stats.tone[t.exp] || (META.stats.tone[t.exp] = { n: 0, ok: 0 }); r.n++; if (t.ok) r.ok++; else META.stats.conf[t.exp + '>' + t.got] = (META.stats.conf[t.exp + '>' + t.got] || 0) + 1; }
+    const toneLine = tones.map(t => `<span class="t${t.got || 5}">${t.got ? 'T' + t.got : '?'}</span><span style="color:var(--${t.verdict === 'ok' ? 'good' : t.verdict === 'wrong' ? 'bad' : 'muted'})">${t.verdict === 'ok' ? '✓' : t.verdict === 'wrong' ? '✗' : t.verdict === 'close' ? '≈' : ''}</span>`).join(' ');
     const expLine = ts.map(s => `<span class="t${s.sp}">${esc(Core.markSyl(s.base, s.sp))}</span>`).join(' ');
     const toneBad = tones.filter(t => t.ok === false);
     out.innerHTML = `<canvas class="pitch"></canvas>
@@ -837,9 +859,12 @@ function speakPanel(host, target, cb) {
       if (key > bk) { bk = key; best = a; bs = cs; sc = sd; }
     }
     const soundOk = sc ? sc.base >= 0.85 : false;
-    const heardToneErr = sc ? sc.res.filter(x => x.st === 'tone') : [];
-    // a one-syllable target heard with the wrong tone is a tone error, not a pass
-    const ok = (bs >= 0.85 || soundOk) && !(ts.length === 1 && heardToneErr.length && bs < 1);
+    // the recogniser guesses a whole word, so its tones are weak evidence for isolated syllables:
+    // report a tone error only when the pitch analysis agrees (or had no voice to judge)
+    const heardToneErr = (sc ? sc.res.filter(x => x.st === 'tone') : []).filter(x => { const i = ts.indexOf(x.t); const t = tones[i]; return !t || t.verdict === 'wrong' || t.verdict === null; });
+    const pitchWrong = tones.filter(t => t.verdict === 'wrong').length;
+    // pass on sound; tone slips make it Hard, not a fail, except a confidently wrong tone on a single-syllable tone drill
+    const ok = (bs >= 0.85 || soundOk) && !(ts.length === 1 && pitchWrong && tones[0].conf >= 0.45);
     stEl.textContent = '';
     const pyLine = sc ? sc.res.map(x => x.y ? `<span style="color:var(--${x.st === 'ok' ? 'good' : x.st === 'tone' ? 'warn' : 'bad'})">${esc(Core.markSyl(x.y.base, x.y.tone))}</span>` : `<span style="color:var(--bad)">_</span>`).join(' ') : '';
     const diff = best ? Core.charDiff(best, target.zh).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('') : '';
@@ -1647,7 +1672,7 @@ V.help = () => {
   view.innerHTML = `<h2>ℹ️ Browser support</h2><div class="card small">
   <p><b>Speech out</b>: ${TTS.ok ? '✓ available' : '✗ missing'}${TTS.voice ? ` · voice: ${esc(TTS.voice.name)} (${esc(TTS.voice.lang)})` : ' · no Chinese voice found yet'} · ${TTS.ok ? speechSynthesis.getVoices().length : 0} voices installed, ${TTS.ok ? speechSynthesis.getVoices().filter(v => /^zh|cmn/i.test(v.lang)).length : 0} Chinese. <button class="btn sm" data-act="say" data-t="你好，我们开始学习吧。">▶ test</button><br>No sound? iPhone: flip the ring/silent switch to ring and turn the volume up (speech follows the ringer). iPhone: Settings → Accessibility → Spoken Content → Voices → Chinese (China mainland) → download an "Enhanced" voice. Android: install Google Speech Services and the Chinese (Mandarin) voice data.</p>
   <p><b>Speech recognition</b>: ${SRClass ? '✓ available' : '✗ not in this browser: you will compare recordings and grade yourself'}. Works best in Chrome on Android. On iPhone it uses Siri dictation (turn on Siri & Dictation, add Chinese (Mainland) as a dictation language); it can be flaky inside a home-screen app, so if it fails, open the site in Safari or switch recognition off in settings.</p>
-  <p><b>Microphone & pitch</b>: ${navigator.mediaDevices ? '✓' : '✗'} needs HTTPS (or localhost). The tone contour is measured from your voice and compared with tone templates (Chao 55/35/214/51). Speak each syllable clearly; whispering or a noisy room gives no pitch.</p>
+  <p><b>Microphone & pitch</b>: ${navigator.mediaDevices ? '✓' : '✗'} needs HTTPS (or localhost). The tone contour is measured from your voice and fitted to tone templates (55 / 35 / 214, or 21 before another tone / 51). It learns your pitch range from your two-syllable recordings${META.voice && META.voice.n ? `: calibrated from ${META.voice.n} so far` : ''}. A near miss shows ≈ and doesn't count against you. Speak each syllable clearly; whispering or a noisy room gives no pitch.</p>
   <p><b>Native recordings</b>: ${D.audio ? `✓ ${D.audioSyl.size} tone syllables and ${D.audioWords.size} words` : '✗ not loaded'}. From <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO): syllables voiced by Chen Wang, words by Yue Tan (shtooka.net), licensed CC BY-SA. Everything else (sentences, rhymes, poems, dialogues) is built-in audio generated once with a neural voice (${esc((D.voice || {}).voice || 'not loaded')}, ${D.voice ? Object.keys(D.voice.files).length : 0} clips) and shipped with the app.</p>
   <p><b>Speech grading</b>: what the recogniser hears is converted to pinyin (<a href="https://github.com/zh-lx/pinyin-pro">pinyin-pro</a>, MIT) and graded by sound and tone, so a same-sounding character counts as right and a wrong tone counts as a tone error.</p>
   <p><b>Handwriting</b>: ${HW_OK() ? '✓ Hanzi Writer loaded' : '✗ Hanzi Writer not loaded (offline on first run?)'}. Stroke data downloads per character and is cached for offline use.</p>
