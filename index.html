@@ -160,22 +160,38 @@ textarea{min-height:120px}
 .uprog{display:flex;align-items:center;gap:12px;font:600 12px var(--ui);color:var(--muted)}
 .uprog .bar{flex:1}
 .uintro{font-size:14px;line-height:1.7;color:var(--ink2);margin:16px 0 4px}
-.tl{list-style:none;margin:18px 0 8px;padding:0;position:relative}
-.tl::before{content:"";position:absolute;left:15px;top:24px;bottom:30px;width:1px;background:var(--line)}
-.tl button{position:relative;display:flex;align-items:center;gap:14px;width:100%;padding:14px 0;border:0;background:none;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
-.tl button:disabled{cursor:default}
-.tl .dot{position:relative;z-index:1;display:grid;place-items:center;flex:none;width:31px;height:31px;border-radius:50%;background:var(--paper);border:1px solid var(--line);font:700 11px var(--ui);color:var(--muted)}
-.tl .dot .ico{width:15px;height:15px;stroke-width:2.2}
-.tl .idx{flex:none;width:22px;font:600 12px var(--ui);color:var(--muted)}
-.tl b{display:block;font:700 17px/1.35 var(--song)}
-.tl small{display:block;margin-top:2px;font:600 12px var(--ui);color:var(--muted)}
-.tl .ls-done .dot{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-.tl .ls-cur .dot{background:var(--seal);border-color:var(--seal);color:#FFF8F2;box-shadow:0 0 0 5px color-mix(in srgb,var(--seal) 16%,transparent)}
-.tl .ls-cur b{color:var(--seal)}
-.tl .ls-lock{opacity:.45}
-.tl .go{flex:none;padding:6px 12px;border-radius:999px;background:var(--seal);color:#FFF8F2;font:700 12px var(--ui)}
-.tl .ls-check .dot{border-radius:4px;background:var(--card);border:1.5px solid var(--seal);color:var(--seal);font:900 15px var(--song)}
-.tl .ls-check.ls-done .dot{background:var(--seal);color:#FFF8F2}
+
+
+/* the road */
+.road{position:relative;width:100%;margin:10px 0 18px}
+.road-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.road-base{fill:none;stroke:var(--muted);stroke-opacity:.45;stroke-width:1.6;stroke-linecap:round;stroke-dasharray:.5 7}
+.road-done{fill:none;stroke:var(--seal);stroke-width:2.6;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:0;animation:walk 1.4s var(--ease) both .15s}
+@keyframes walk{from{stroke-dashoffset:1}}
+.rstop{position:absolute;transform:translate(-50%,-50%)}
+.rnode{position:relative;display:grid;place-items:center;width:62px;height:62px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:700 24px/1 var(--song);cursor:pointer;transition:transform .2s var(--ease),box-shadow .2s}
+.rnode:active{transform:scale(.94)}
+.rnode .ico{width:22px;height:22px;stroke-width:2}
+.rnode.open{border:1.5px solid var(--ink);box-shadow:0 10px 24px -14px rgba(0,0,0,.35)}
+.rnode.done{background:var(--ink);border-color:var(--ink);color:var(--paper);box-shadow:0 10px 24px -14px rgba(0,0,0,.45)}
+.rnode.cur{width:70px;height:70px;background:var(--seal);border-color:var(--seal);color:#FFF8F2;font-size:28px;box-shadow:0 14px 30px -14px color-mix(in srgb,var(--seal) 80%,transparent)}
+.rnode.cur::before,.rnode.cur::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:1px solid var(--seal);animation:halo 2.6s var(--ease) infinite}
+.rnode.cur::after{animation-delay:1.3s}
+@keyframes halo{from{transform:scale(1);opacity:.7}to{transform:scale(1.55);opacity:0}}
+.rnode.lock{color:var(--muted);background:var(--paper);cursor:default}
+.rnode.lock .ico{width:18px;height:18px;stroke-width:1.6}
+.rnode.rcheck{border-radius:8px;border:1.5px solid var(--seal);color:var(--seal);font-size:26px;font-weight:900}
+.rnode.rcheck.cur{background:var(--seal);color:#FFF8F2;border-radius:8px}
+.rnode.rcheck.done{background:var(--seal);border-color:var(--seal);color:#FFF8F2}
+.rnode.rcheck.lock{border-color:var(--line);color:var(--muted)}
+.rlabel{position:absolute;top:50%;width:118px;transform:translateY(-50%)}
+.side-r .rlabel{left:calc(100% + 14px)}
+.side-l .rlabel{right:calc(100% + 14px);text-align:right}
+.rlabel b{display:block;margin:2px 0;font:700 15.5px/1.3 var(--song);color:var(--ink)}
+.rlabel small{display:block;font:600 11.5px/1.3 var(--ui);color:var(--muted)}
+.rstop:has(.rnode.cur) .rlabel b{color:var(--seal)}
+.rstop:has(.rnode.lock) .rlabel{opacity:.5}
+.rlabel .go{display:inline-block;margin-top:4px;padding:4px 11px;border-radius:999px;background:var(--seal);color:#FFF8F2;font:700 11.5px var(--ui)}
 
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
@@ -1643,15 +1659,22 @@ V.unit = id => {
   const cur = u.lessons.find(l => !lessonDone(l.id) && lessonUnlocked(l));
   const kind = { new: '生词', text: '阅读', drill: '练习', scenario: '情景' };
   const detail = l => l.type === 'new' ? `${(l.items || []).length} items` : l.type === 'drill' ? `${(l.ex || []).length} drills` : l.type === 'text' ? 'read and recite' : 'role-play';
-  const rows = u.lessons.map((l, i) => {
-    const st = lessonDone(l.id) ? 'done' : !lessonUnlocked(l) ? 'lock' : l === cur ? 'cur' : 'open';
-    return `<li class="ls-${st}"><button data-act="${st === 'lock' ? '' : 'lesson'}" data-id="${l.id}"${st === 'lock' ? ' disabled' : ''}><span class="dot">${st === 'done' ? ic('check') : st === 'lock' ? ic('lock') : ''}</span><span class="idx">${String(i + 1).padStart(2, '0')}</span><span class="grow"><b class="hz">${esc(l.title)}</b><small>${kind[l.type] || ''} · ${detail(l)}</small></span>${st === 'cur' ? '<span class="go">开始</span>' : ''}</button></li>`;
-  }).join('');
   const sc = META.progress.units[u.id];
+  // the road: stops on a gentle sine, joined by one smooth curve; the walked part is drawn in vermilion
+  const stops = u.lessons.map((l, i) => ({ l, i, st: lessonDone(l.id) ? 'done' : !lessonUnlocked(l) ? 'lock' : l === cur ? 'cur' : 'open' }));
+  stops.push({ check: true, st: sc >= 85 ? 'done' : ok ? (cur ? 'open' : 'cur') : 'lock' });
+  const H = 70 + (stops.length - 1) * 116 + 70, X = i => 170 + Math.sin(i * 1.1) * 96, Y = i => 70 + i * 116;
+  const curve = upto => Array.from({ length: upto + 1 }, (_, i) => i ? `C${X(i - 1).toFixed(1)} ${Y(i - 1) + 58} ${X(i).toFixed(1)} ${Y(i) - 58} ${X(i).toFixed(1)} ${Y(i)}` : `M${X(0).toFixed(1)} ${Y(0)}`).join(' ');
+  const reached = Math.max(0, stops.findIndex(x => x.st !== 'done') === -1 ? stops.length - 1 : stops.findIndex(x => x.st !== 'done'));
+  const road = `<div class="road" style="aspect-ratio:340/${H}"><svg class="road-svg" viewBox="0 0 340 ${H}" aria-hidden="true"><path class="road-base" d="${curve(stops.length - 1)}"/>${reached ? `<path class="road-done" pathLength="1" d="${curve(reached)}"/>` : ''}</svg>
+    ${stops.map((x, i) => { const side = X(i) >= 170 ? 'l' : 'r', pos = `left:${(X(i) / 340 * 100).toFixed(2)}%;top:${(Y(i) / H * 100).toFixed(2)}%`;
+      if (x.check) return `<div class="rstop side-${side}" style="${pos}"><button class="rnode rcheck ${x.st}" data-act="${x.st === 'lock' ? '' : 'check'}" data-id="${u.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="Unit checkpoint, 85% to pass">考</button><div class="rlabel"><small>检测 · Checkpoint</small><b>单元检测</b><small>${sc != null ? `best ${sc}%` : '85% to pass'}</small></div></div>`;
+      const l = x.l, glyph = l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : { text: '读', drill: '练', scenario: '说' }[l.type] || '学';
+      return `<div class="rstop side-${side}" style="${pos}"><button class="rnode ${x.st}" data-act="${x.st === 'lock' ? '' : 'lesson'}" data-id="${l.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="${esc(l.title)}${x.st === 'done' ? ', done' : x.st === 'lock' ? ', locked' : ''}">${x.st === 'done' ? ic('check') : x.st === 'lock' ? ic('lock') : glyph}</button><div class="rlabel"><small>${String(i + 1).padStart(2, '0')} · ${kind[l.type] || ''}</small><b>${esc(l.title)}</b>${x.st === 'cur' ? '<span class="go">开始</span>' : `<small>${detail(l)}</small>`}</div></div>`; }).join('')}</div>`;
   view.innerHTML = `<section class="uhead"><div class="vnum" aria-hidden="true">第${Core.numToZh(u.n)}单元</div><p class="meta">第${Core.numToZh(u.stage)}阶段</p><h2 class="display">${esc(u.title)}</h2><p class="en">${esc(u.en)}</p>
     <div class="uprog"><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><span>${done} / ${u.lessons.length}</span></div></section>
   <p class="uintro">${esc(u.intro || '')}</p>
-  <ol class="tl">${rows}<li class="ls-check${sc >= 85 ? ' ls-done' : ''}${ok ? '' : ' ls-lock'}"><button data-act="${ok ? 'check' : ''}" data-id="${u.id}"${ok ? '' : ' disabled'}><span class="dot">考</span><span class="idx"></span><span class="grow"><b>单元检测 Checkpoint</b><small>85% to pass${sc != null ? ` · best ${sc}%` : ''}</small></span></button></li></ol>
+  ${road}
   <button class="btn block" data-act="cram" data-id="${u.id}">突击 Cram this unit</button>
   ${(u.texts || []).length ? `<h3>课文 · Texts</h3><div class="hscroll">${u.texts.map(t => `<a class="hcard" data-w="${esc([...t.title].find(Core.isHan) || '')}" href="#text/${t.id}"><span>${esc(t.kind)}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
   ${u.scenario ? `<h3>情景 · Role-play</h3><div class="list"><a href="#scen/${u.scenario.id}">${ic('chat')}<span class="grow hz">${esc(u.scenario.title)}</span>${ic('chev')}</a></div>` : ''}`;
@@ -1994,7 +2017,7 @@ function route() {
   renderStreak(); window.scrollTo(0, 0);
   if (name !== 'session' && 'IntersectionObserver' in window) { // reveal-on-scroll
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.08 });
-    $$('#view > .card, #view > .group, #view > .notes, #view > .tl, #view > .hscroll, #view > .list').forEach(el => { el.classList.add('rv'); io.observe(el); });
+    $$('#view > .card, #view > .group, #view > .notes, #view > .road, #view > .hscroll, #view > .list').forEach(el => { el.classList.add('rv'); io.observe(el); });
   }
 }
 window.addEventListener('hashchange', route);
