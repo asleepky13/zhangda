@@ -297,6 +297,17 @@ canvas.brush{display:block;touch-action:none;cursor:crosshair}
 .pytile.on{border-color:var(--seal);box-shadow:inset 0 0 0 1px var(--seal)}.pytile.on small{color:var(--seal)}
 .pygroup{margin:14px 0 6px;font:600 12px var(--ui);color:var(--muted)}
 
+
+/* lesson: in context */
+.cloze{margin:14px 0 6px;padding:18px 16px;border:1px solid var(--line);border-radius:16px;background:var(--card);font-size:22px;line-height:2.1;text-align:center}
+.cloze .gap{display:inline-block;min-width:2.2em;border-bottom:2px solid var(--seal);line-height:1.2;vertical-align:baseline}
+.points{border-top:1px solid var(--line)}
+.points>div{padding:14px 2px;border-bottom:1px solid var(--line)}
+.points b{font:700 22px var(--song);margin-right:10px}
+.points p{margin:6px 0 0;font-size:14.5px;line-height:1.6;color:var(--ink2)}
+.points .pex{margin-top:8px;padding-left:12px;border-left:2px solid var(--seal);font-size:16px;color:var(--ink)}
+.points .pex span{font:500 13px var(--ui);color:var(--muted)}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -995,7 +1006,7 @@ async function say(t, r, p) {
   if (S().deviceVoice === false) return;
   return TTS.speak(t, r);
 }
-function listenRate(it) { const c = CARDS.get(it.id + '|listening'); const s = c && c.st === 2 ? c.s : 0; return s < 3 ? 0.6 : s < 21 ? S().rate : Math.min(1.25, S().rate + 0.25); }
+function listenRate(it) { const c = CARDS.get(it.id + '|listening'); const s = c && c.st === 2 ? c.s : 0; return s < 3 ? 0.8 : s < 21 ? S().rate : Math.min(1.25, S().rate + 0.25); }
 
 // ---------------- speech in: recognition + pitch + recording ----------------
 const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1283,14 +1294,14 @@ function chooseKind(c, it, mode) {
   const sk = c.skill, s = c.st === 2 ? c.s : 0, first = c.reps === 0 && mode !== 'check' && mode !== 'exam';
   if (sk === 'drill') return 'drill';
   if (it.k === 'syl') return sk === 'listening' ? 'toneId' : 'shadow';
-  if (sk === 'reading') { if (first) return 'mcMeaning'; if (it.mw && s > 2 && Math.random() < 0.25) return 'mwFill'; if (it.ex && it.ex.length && s > 7 && Math.random() < 0.4) return 'sentMeaning'; return 'typePinyin'; }
+  if (sk === 'reading') { if (first) return 'mcMeaning'; if ((it.ex || []).some(e => e.zh.includes(it.s))) { const r = Math.random(); if (r < 0.2) return 'cloze'; if (r < 0.32) return 'buildSentence'; } if (it.mw && s > 2 && Math.random() < 0.25) return 'mwFill'; if (it.ex && it.ex.length && s > 7 && Math.random() < 0.4) return 'sentMeaning'; return 'typePinyin'; }
   if (sk === 'writing') {
     const one = [...it.s].filter(Core.isHan).length === 1, ch = D.chars.get(it.s);
     if (first) return one && ch && (ch.c || []).length >= 2 && Math.random() < 0.5 ? 'assemble' : 'trace';
     if (one && s < 7 && Math.random() < 0.25 && lookalikes(it).length >= 3) return 'pickChar';
     return 'handwrite';
   }
-  if (sk === 'listening') { if (first) return 'listenMC'; if (it.ex && it.ex.length && s > 14 && Math.random() < 0.35) return 'dictation'; return 'listenType'; }
+  if (sk === 'listening') { if (first) return 'listenMC'; const r = Math.random(); if (it.ex && it.ex.length && r < 0.35) return s > 14 && r < 0.12 ? 'dictation' : 'listenSentence'; return r < 0.6 ? 'toneEar' : 'listenType'; }
   if (first) return 'shadow';
   if (it.ex && it.ex.length && s > 14 && Math.random() < 0.3) return 'speakTranslate';
   return 'speakMeaning';
@@ -1357,7 +1368,7 @@ function renderTask() {
   const s = SES;
   if (!s) return go('#today');
   if (s.i >= s.tasks.length) {
-    if (FSRS_MODES.has(s.mode)) { // pull in learning steps that come due in the next 20 minutes
+    if (s.mode === 'review') { // reviews only: pull in learning steps due within 20 minutes (lessons end when their plan ends)
       const seen = new Set(s.tasks.map(t => t.card)); const more = dueCards(20 * 6e4).filter(c => c.st === 1 || c.st === 3 || seen.has(c.id)).filter(c => c.due - Date.now() < 20 * 6e4);
       const fresh = more.filter(c => !s.pulled || !s.pulled.has(c.id + c.reps));
       s.pulled = s.pulled || new Set(); fresh.forEach(c => s.pulled.add(c.id + c.reps));
@@ -1370,6 +1381,7 @@ function renderTask() {
   view.innerHTML = `<div class="prog"><div class="row"><button class="btn sm ic" data-act="quit" aria-label="end session">${ic('close')}</button><div class="grow bar"><i style="width:${Math.round(s.i / total * 100)}%"></i></div>${s.combo >= 3 ? `<span class="combo" aria-label="${s.combo} right in a row">连对 ${s.combo}</span>` : `<span class="small muted">${s.i + 1}/${total}</span>`}</div></div><div id="ex"></div>`;
   const host = $('#ex');
   if (t.kind === 'intro') return exIntro(host, D.items.get(t.item));
+  if (t.kind === 'info') { host.innerHTML = t.html + `<button class="btn pri block" data-r="next">明白了 Got it</button>`; $('[data-r=next]', host).onclick = () => { SES.i++; renderTask(); }; return; }
   if (t.kind === 'custom') return t.run(host, res => finish(t, res));
   const c = CARDS.get(t.card) || t.tmpCard;
   if (t.ex) { const x = D.ex.get(t.ex); return x ? exDrill(host, x, res => finish(t, res)) : skip(); }
@@ -1593,6 +1605,30 @@ EX.toneId = (host, it, cb) => {
   bindMC(host, opts, opts.indexOf(right), cb, o => { const cit = ts.map(s => Core.markSyl(s.base, s.tone)).join(' '); return o === cit && cit !== right ? `That's how it's <i>written</i>. Spoken it changes: ${esc(right)} (tone sandhi).` : `You heard ${esc(right)}.`; });
 };
 EX.speakSyl = EX.shadow;
+EX.toneEar = EX.toneId; // hear the word, name its tones (works for any word, not just syllables)
+const exWith = it => (it.ex || []).filter(e => e.zh.includes(it.s));
+const sentReveal = e => `<div class="hz tc" style="font-size:20px;margin:6px 0">${rubyHTML(e.zh, e.p)}</div><div class="small muted">${esc(e.en)}</div>`;
+EX.cloze = (host, it, cb) => { // the word in a real sentence
+  const e = pick(exWith(it)); if (!e) return EX.typePinyin(host, it, cb);
+  const opts = shuffle([it, ...distract(it, 3, 's')]);
+  host.innerHTML = `<p class="muted center">Fill the gap</p><div class="cloze hz">${esc(e.zh).split(esc(it.s)).join('<span class="gap">　　</span>')}</div><p class="center small muted">${esc(e.en)}</p>${mcHTML(opts, o => `<span class="hz" style="font-size:22px">${esc(o.s)}</span>`)}`;
+  bindMC(host, opts, opts.indexOf(it), r => cb({ ...r, why: (r.why ? r.why + '<br>' : '') + sentReveal(e) }), o => `「${esc(o.s)}」 means ${esc(o.en)}.`);
+};
+EX.listenSentence = (host, it, cb) => { // hear a whole sentence at natural speed, catch its meaning
+  const e = pick(it.ex || []); if (!e) return EX.listenType(host, it, cb);
+  const pool = [...D.items.values()].filter(x => x.unit === it.unit && x.id !== it.id).flatMap(x => x.ex || []).filter(x => x.en !== e.en);
+  const opts = shuffle([e, ...sample(pool, 3)]), r = Math.max(0.85, listenRate(it));
+  host.innerHTML = `<p class="muted center">Listen. What does the sentence mean?</p>${audioBtns(e.zh, `<button class="btn sm" data-act="say" data-t="${esc(e.zh)}" data-r="${r}">${ic('play')} ${r}×</button>`)}${mcHTML(opts, o => esc(o.en))}`;
+  setTimeout(() => say(e.zh, r), 200);
+  bindMC(host, opts, opts.indexOf(e), res => cb({ ...res, noAudio: true, why: sentReveal(e) }));
+};
+EX.buildSentence = (host, it, cb) => { const e = pick(exWith(it)) || (it.ex || [])[0]; if (!e) return EX.mcMeaning(host, it, cb); exDrill(host, { type: 'order', zh: e.zh, p: e.p, en: e.en }, cb); };
+EX.speakSentence = (host, it, cb) => {
+  const e = pick(it.ex || []); if (!e) return EX.shadow(host, it, cb);
+  host.innerHTML = `<p class="muted center">Listen, then say the whole sentence</p><div class="cloze hz tc">${rubyHTML(e.zh, e.p)}</div><p class="center small muted">${esc(e.en)}</p>${audioBtns(e.zh)}<div data-r="sp"></div>`;
+  setTimeout(() => say(e.zh), 200);
+  speakPanel($('[data-r=sp]', host), { zh: e.zh, p: e.p }, r => cb({ ...r, noAudio: true }));
+};
 
 // --- authored drills ---
 function exDrill(host, x, cb) {
@@ -1698,15 +1734,29 @@ function startLesson(l) {
   const items = (l.items || []).map(id => D.items.get(id)).filter(Boolean);
   const tasks = [];
   dayStat().new += items.filter(it => !CARDS.has(it.id + '|' + skillsFor(it)[0])).length;
+  items.forEach(addItemCards);
+  const T = (it, sk, kind) => { const c = CARDS.get(it.id + '|' + sk); return c ? { ...cardTask(c, 'lesson'), kind } : null; };
+  // 1. meet the words four at a time, each followed by a quick check
   for (let k = 0; k < items.length; k += 4) {
     const chunk = items.slice(k, k + 4);
-    chunk.forEach(it => { addItemCards(it); tasks.push({ kind: 'intro', item: it.id }); });
-    const first = [];
-    chunk.forEach(it => skillsFor(it).forEach(sk => first.push(cardTask(CARDS.get(it.id + '|' + sk), 'lesson'))));
-    tasks.push(...shuffle(first));
+    chunk.forEach(it => tasks.push({ kind: 'intro', item: it.id }));
+    tasks.push(...shuffle(chunk.map(it => it.k === 'syl' ? T(it, 'listening', 'toneId') : T(it, 'reading', 'mcMeaning')).filter(Boolean)));
   }
+  // 2. the rules behind the words
+  const notes = items.filter(it => it.note);
+  if (notes.length) tasks.push({ kind: 'info', html: `<p class="muted center">要点 · Key points</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:14px">${esc(l.title)}</h2><div class="points">${notes.map(it => `<div><b class="hz">${esc(it.s)}</b><span class="tc">${pyHTML(it.s, it.p)}</span><p>${esc(it.note)}</p>${(it.ex || [])[0] ? `<p class="hz pex">${esc(it.ex[0].zh)}<br><span>${esc(it.ex[0].en)}</span></p>` : ''}</div>`).join('')}</div>` });
+  // 3. use them: sentences, tones, writing, speaking, all mixed
+  const practice = [], words = items.filter(it => it.k !== 'syl'), withEx = shuffle(words.filter(it => (it.ex || []).length));
+  for (const it of items) {
+    if (it.k === 'syl') { practice.push(T(it, 'speaking', 'shadow')); continue; }
+    practice.push(T(it, 'reading', exWith(it).length ? 'cloze' : 'typePinyin'), T(it, 'listening', 'toneEar'), T(it, 'writing', 'trace'));
+  }
+  withEx.slice(0, 3).forEach(it => practice.push(T(it, 'listening', 'listenSentence')));
+  withEx.slice(3, 6).concat(withEx.length < 4 ? withEx.slice(0, 2) : []).forEach(it => practice.push(T(it, 'reading', 'buildSentence')));
+  withEx.slice(0, 2).forEach(it => practice.push(T(it, 'speaking', 'speakSentence')));
+  tasks.push(...shuffle(practice.filter(Boolean)));
   for (const xid of l.ex || []) { const x = D.ex.get(xid); if (x) tasks.push(cardTask(addExCard(x), 'lesson')); }
-  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit }); } });
+  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit }); } });
 }
 function examTasks(items, exs, n) {
   const tasks = [];
