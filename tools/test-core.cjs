@@ -71,6 +71,15 @@ t('compare pinyin', () => {
   const ju = [{ base: 'ju', tone: 2, sp: 2 }];
   assert.ok(C.comparePy(ju, C.splitTyped('jv2')).ok);
 });
+t('score heard pinyin', () => {
+  const tgt = C.sandhi(C.align('你好', 'nǐ hǎo'));
+  const H = s => s.split(' ').map(C.parseSyl);
+  assert.strictEqual(C.scoreHeard(tgt, H('ni3 hao3')).base, 1);               // recogniser gives citation tones
+  assert.strictEqual(C.scoreHeard(tgt, H('ni3 hao3')).tone, 1);
+  const m = C.scoreHeard(C.align('买', 'mǎi'), H('mai4'));                      // said 卖 instead of 买
+  assert.strictEqual(m.base, 1); assert.strictEqual(m.tone, 0); assert.strictEqual(m.res[0].st, 'tone');
+  assert.ok(C.scoreHeard(tgt, H('ni3')).base < 0.85);                          // half the word missing
+});
 t('numbers & similarity', () => {
   assert.strictEqual(C.numToZh(10), '十'); assert.strictEqual(C.numToZh(15), '十五'); assert.strictEqual(C.numToZh(105), '一百零五');
   assert.strictEqual(C.numToZh(2024), '二千零二十四'); assert.strictEqual(C.numToZh(30000), '三万');
@@ -113,3 +122,4 @@ t('pitch: yin + tones', () => {
   assert.strictEqual(C.pitchSegments(glued, 2).length, 2);
 });
 console.log(`core: ${n} test groups passed`);
+{ const r = C.scoreHeard(C.align('谢谢', 'xiè xie'), ['xie4', 'xie4'].map(C.parseSyl)); assert.strictEqual(r.tone, 1, 'neutral tone tolerated'); console.log('neutral-tone grading ok'); }

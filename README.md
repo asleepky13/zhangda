@@ -21,3 +21,8 @@ Drop `data/sXuYY.json` (schema in ARCHITECTURE.md), add its filename to `data/in
 - Tone analysis compares your pitch with tone templates (Chao 55/35/214/51), since browsers cannot capture TTS audio to compare against. Syllables are split by voiced runs, so speak clearly; fast connected speech can mis-split.
 - Handwriting stroke data loads per character from jsDelivr and is cached for offline use.
 - iOS may clear site storage of non-installed sites after weeks unused. Install to the home screen and use Export regularly.
+
+## Credits
+- Native recordings: [audio-cmn](https://github.com/hugolpz/audio-cmn) by Hugo Lopez (INALCO). Tone syllables voiced by Chen Wang, HSK words by Yue Tan (shtooka.net). CC BY-SA. Streamed from jsDelivr, pinned to commit f759a0f; `data/audio.json` lists which recordings exist.
+- Hanzi → pinyin for speech grading: [pinyin-pro](https://github.com/zh-lx/pinyin-pro) (MIT).
+- Stroke data: [Hanzi Writer](https://hanziwriter.org) and Make Me a Hanzi.

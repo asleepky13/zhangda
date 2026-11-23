@@ -263,6 +263,15 @@ const Core = (() => {
     }
     return { ok: res.length > 0 && res.every(r => r.st === 'ok'), res };
   }
+  // score heard syllables against the target: sounds (base) and tones separately; sandhi and citation tones both accepted
+  function scoreHeard(target, heard) {
+    const tg = target.map(t => ({ ...t, alt: [t.tone] }));
+    const r = comparePy(tg, heard);
+    // the recogniser can't show neutral tones (谢谢 comes back xie4 xie4), so neutral on either side matches any tone
+    for (const x of r.res) if (x.st === 'tone' && (x.t.tone === 5 || x.t.sp === 5 || x.y.tone === 5)) x.st = 'ok';
+    const n = Math.max(target.length, heard.length, 1);
+    return { base: r.res.filter(x => x.st === 'ok' || x.st === 'tone').length / n, tone: r.res.filter(x => x.st === 'ok').length / n, res: r.res };
+  }
   // ---------- text ----------
   function numToZh(n) {
     n = Math.floor(n); if (n === 0) return '零';
@@ -418,7 +427,7 @@ const Core = (() => {
     if (tone === 5) { const c = NEUTRAL_AFTER[prev || 1]; return [c, c - 0.3]; }
     return half && tone === 3 ? CHAO.h : CHAO[tone];
   }
-  return { parseSyl, normBase, markSyl, splitTyped, align, sandhi, comparePy, isHan, numToZh, normZh, charSim, charDiff, segment, edit,
+  return { parseSyl, normBase, markSyl, splitTyped, align, sandhi, comparePy, scoreHeard, isHan, numToZh, normZh, charSim, charDiff, segment, edit,
     W, DAY, newCard, review, retrievability, ivlDays, retr, yin, pitchSegments, classifyTone, toneTemplate, median };
 })();
 if (typeof module !== 'undefined') module.exports = Core;
@@ -478,20 +487,22 @@ const DB = {
 };
 let CARDS = new Map();
 let META = null;
-const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false },
+const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false, native: true },
   progress: { lessons: {}, units: {}, stages: {}, scen: {} }, stats: { days: {}, tone: {}, conf: {} }, weak: {}, streak: { n: 0, last: '' }, custom: [] });
 const S = () => META.settings;
 const save = () => DB.putMeta();
 function putCard(c) { CARDS.set(c.id, c); DB.putCards([c]); }
 
 // ---------------- data ----------------
-const D = { stages: [], units: [], unitById: new Map(), items: new Map(), chars: new Map(), texts: new Map(), ex: new Map(), lessons: new Map(), scen: new Map(), dict: new Map(), syl: {}, sylSet: null, mw: new Set() };
+const D = { stages: [], units: [], unitById: new Map(), items: new Map(), chars: new Map(), texts: new Map(), ex: new Map(), lessons: new Map(), scen: new Map(), dict: new Map(), syl: {}, sylSet: null, mw: new Set(), sylP: new Map(), audio: null, audioWords: new Set(), audioSyl: new Set() };
 async function loadData() {
   const idx = await fetch('data/index.json').then(r => r.json());
   D.stages = idx.stages;
   const files = idx.stages.flatMap(s => s.units);
   const units = await Promise.all(files.map(f => fetch('data/' + f).then(r => r.json()).catch(e => { console.warn('unit failed', f, e); return null; })));
   D.syl = await fetch('data/syllables.json').then(r => r.json()).catch(() => ({}));
+  D.audio = await fetch('data/audio.json').then(r => r.json()).catch(() => null);
+  if (D.audio) { D.audioWords = new Set(D.audio.words); D.audioSyl = new Set(D.audio.syl); }
   D.sylSet = new Set(Object.keys(D.syl).map(k => Core.normBase(k.replace(/v/g, 'ü'))).concat(['er', 'm', 'n', 'ng', 'hm', 'yo', 'o', 'me', 'ne', 'ei', 'dei', 'zhei', 'nang', 'den', 'cen', 'chua', 'zhuai', 'shei']));
   units.filter(Boolean).forEach(addUnit);
   for (const it of META.custom || []) addItem(it);
@@ -503,7 +514,7 @@ function addItem(it) {
 }
 function addUnit(u) {
   D.units.push(u); D.unitById.set(u.id, u);
-  for (const it of u.items || []) { it.unit = u.id; addItem(it); }
+  for (const it of u.items || []) { it.unit = u.id; addItem(it); if (it.k === 'syl' && [...it.s].length === 1 && !D.sylP.has(it.s)) D.sylP.set(it.s, it.p); }
   for (const [c, v] of Object.entries(u.chars || {})) if (!D.chars.has(c)) D.chars.set(c, v);
   for (const t of u.texts || []) { t.unit = u.id; D.texts.set(t.id, t); }
   for (const x of u.exercises || []) { x.unit = u.id; D.ex.set(x.id, x); }
@@ -600,7 +611,36 @@ if (TTS.ok) {
     if (META && !speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) setTimeout(() => { if (!speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) toast('No Chinese voice found on this phone: see More → Browser support'); }, 1500); };
   document.addEventListener('pointerdown', unlock, { once: true, capture: true });
 }
-const say = (t, r) => TTS.speak(t, r);
+// Native recordings (audio-cmn, CC BY-SA): single characters use the tone-syllable recording, words the HSK word recording.
+const Native = {
+  el: null,
+  url(text, p) {
+    const a = D.audio; if (!a || !S().native) return null;
+    const hz = [...String(text)].filter(Core.isHan);
+    if (hz.length === 1 && hz.join('') === String(text).trim()) {
+      const pin = p || (D.dict.get(text) || {}).p || D.sylP.get(text) || (D.chars.get(text) || {}).p;
+      const sy = pin && Core.parseSyl(String(pin).split(/[,，\s]/)[0]);
+      if (sy) { const k = Core.normBase(sy.base).replace(/ü/g, 'v') + sy.tone; if (D.audioSyl.has(k)) return a.base + 'syllabs/cmn-' + k + '.mp3'; if (sy.tone === 5) return null; }
+    }
+    if (D.audioWords.has(text)) return a.base + 'hsk/cmn-' + encodeURIComponent(text) + '.mp3';
+    return null;
+  },
+  play(url, rate) {
+    return new Promise(res => {
+      const au = this.el || (this.el = new Audio());
+      au.pause(); au.src = url; au.preservesPitch = true;
+      au.playbackRate = Math.max(0.5, Math.min(2, (rate || S().rate) / 0.9));
+      au.onended = () => res(true); au.onerror = () => res(false);
+      const pr = au.play(); if (pr) pr.catch(() => res(false));
+      setTimeout(() => res(true), 8000);
+    });
+  }
+};
+async function say(t, r, p) {
+  const u = Native.url(t, p);
+  if (u) { if (TTS.ok) speechSynthesis.cancel(); if (await Native.play(u, r)) return; }
+  return TTS.speak(t, r);
+}
 function listenRate(it) { const c = CARDS.get(it.id + '|listening'); const s = c && c.st === 2 ? c.s : 0; return s < 3 ? 0.6 : s < 21 ? S().rate : Math.min(1.25, S().rate + 0.25); }
 
 // ---------------- speech in: recognition + pitch + recording ----------------
@@ -639,6 +679,18 @@ const Mic = {
     return { track: this.track || [], url };
   }
 };
+let PP = null, ppLoading = null;
+function loadPinyinPro() { // MIT, context-aware hanzi → pinyin; used to grade by sound instead of by characters
+  if (PP || ppLoading) return ppLoading;
+  ppLoading = new Promise(res => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/pinyin-pro@3.29.5/dist/index.js';
+    sc.onload = () => { PP = window.pinyinPro || null; res(PP); }; sc.onerror = () => { ppLoading = null; res(null); }; document.head.appendChild(sc); });
+  return ppLoading;
+}
+function heardSyls(text) {
+  const z = Core.normZh(text);
+  if (!z || !PP) return null;
+  return PP.pinyin(z, { toneType: 'num', type: 'array' }).map(x => Core.parseSyl(String(x).replace(/0$/, '5'))).filter(Boolean);
+}
 function recognize() {
   if (!SRClass || S().sr === 'off') return null;
   const r = new SRClass(); r.lang = 'zh-CN'; r.interimResults = false; r.maxAlternatives = 5; r.continuous = false;
@@ -675,6 +727,7 @@ function drawPitch(cv, segs, tsyls) {
 // speak panel: records, recognizes, analyses tones; calls cb(result)
 function speakPanel(host, target, cb) {
   const ts = syls(target.zh, target.p) || [];
+  if (SRClass) loadPinyinPro();
   host.innerHTML = `<button class="mic" aria-label="record">🎙</button><div class="center hint" data-r="st">tap, then speak · tap again to stop</div><div data-r="out"></div>`;
   const btn = $('.mic', host), stEl = $('[data-r=st]', host), out = $('[data-r=out]', host);
   let active = false, sr = null, timer = 0;
@@ -729,19 +782,25 @@ function speakPanel(host, target, cb) {
       $('[data-r=good]', box).onclick = () => cb({ ok: true, self: true, tonesOff: toneBad.length > 0 });
       return;
     }
-    let best = '', bs = 0;
-    for (const a of alts) { const s = Core.charSim(a, target.zh); if (s > bs) { bs = s; best = a; } }
-    // homophone rescue: same syllables (by our character table) even if different characters
-    let homo = false;
-    if (bs < 0.85 && best) {
-      const a = [...Core.normZh(best)], b = ts.map(s => s.base);
-      homo = a.length === b.length && a.every((c, i) => { const ch = D.chars.get(c); return ch && Core.normBase(Core.parseSyl(ch.p.split(/[,，\s]/)[0]).base) === Core.normBase(b[i]); });
+    // grade each alternative by sound (pinyin) and by characters; keep the best
+    let best = '', bs = 0, sc = null, bk = -1;
+    for (const a of alts) {
+      const cs = Core.charSim(a, target.zh), hs = ts.length ? heardSyls(a) : null, sd = hs ? Core.scoreHeard(ts, hs) : null;
+      const key = Math.max(cs, sd ? sd.base : 0) + (sd ? sd.tone * 0.01 : 0);
+      if (key > bk) { bk = key; best = a; bs = cs; sc = sd; }
     }
-    const ok = bs >= 0.85 || homo;
+    const soundOk = sc ? sc.base >= 0.85 : false;
+    const heardToneErr = sc ? sc.res.filter(x => x.st === 'tone') : [];
+    // a one-syllable target heard with the wrong tone is a tone error, not a pass
+    const ok = (bs >= 0.85 || soundOk) && !(ts.length === 1 && heardToneErr.length && bs < 1);
     stEl.textContent = '';
+    const pyLine = sc ? sc.res.map(x => x.y ? `<span style="color:var(--${x.st === 'ok' ? 'good' : x.st === 'tone' ? 'warn' : 'bad'})">${esc(Core.markSyl(x.y.base, x.y.tone))}</span>` : `<span style="color:var(--bad)">_</span>`).join(' ') : '';
     const diff = best ? Core.charDiff(best, target.zh).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('') : '';
-    $('[data-r=sr]', out).innerHTML = `<p class="center">heard: <span class="hz" style="font-size:20px">${best ? esc(best) : '—'}</span><br><span class="small muted">${best ? 'match ' + Math.round(bs * 100) + '% ' + diff : 'nothing recognised'}${homo ? ' · same sounds, different characters' : ''}</span></p>`;
-    cb({ ok, sim: bs, heard: best, tonesOff: toneBad.length > 0, why: [!ok ? (best ? `Recognised 「${best}」 instead of 「${target.zh}」` : 'Nothing was recognised') : '', toneWhy ? 'Pitch: ' + toneWhy : ''].filter(Boolean).join('<br>') });
+    const same = best && bs < 0.85 && soundOk;
+    $('[data-r=sr]', out).innerHTML = `<p class="center">heard: <span class="hz" style="font-size:20px">${best ? esc(best) : '—'}</span>${pyLine ? `<br><span>${pyLine}</span>` : ''}<br><span class="small muted">${best ? 'sound ' + Math.round((sc ? sc.base : bs) * 100) + '% · characters ' + diff : 'nothing recognised'}${same ? ' · same sounds, different characters: fine' : ''}</span></p>`;
+    const heardWhy = heardToneErr.map(x => `「${x.t.hz}」 heard as ${Core.markSyl(x.y.base, x.y.tone)}, should be ${Core.markSyl(x.t.base, x.t.sp)}`).join('; ');
+    cb({ ok, sim: Math.max(bs, sc ? sc.base : 0), heard: best, tonesOff: toneBad.length > 0 || heardToneErr.length > 0,
+      why: [!ok ? (best ? (heardWhy ? 'Tone: ' + heardWhy : `Recognised 「${best}」 instead of 「${target.zh}」`) : 'Nothing was recognised') : (heardWhy ? 'Tone: ' + heardWhy : ''), toneWhy ? 'Pitch: ' + toneWhy : ''].filter(Boolean).join('<br>') });
   }
 }
 
@@ -1493,8 +1552,8 @@ V.chart = () => {
   ${IN.map(i => { const ks = keys.filter(k => initOf(k) === i); return ks.length ? `<h3>${i || '(no initial)'}</h3><div class="pyc">${ks.map(k => `<button data-k="${k}">${esc(k.replace('v', 'ü'))}</button>`).join('')}</div>` : ''; }).join('')}`;
   $$('[data-k]').forEach(b => b.onclick = () => {
     const k = b.dataset.k, cs = [...(D.syl[k] || '')];
-    $('#toneRow').innerHTML = `<div class="grid4">${[1, 2, 3, 4].map(t => cs[t - 1] && cs[t - 1] !== '_' ? `<button class="btn" data-act="say" data-t="${cs[t - 1]}" data-r="0.7"><span class="t${t}" style="color:var(--t${t})">${esc(Core.markSyl(k.replace('v', 'ü'), t))}</span><br><span class="hz">${cs[t - 1]}</span></button>` : `<button class="btn" disabled>${esc(Core.markSyl(k.replace('v', 'ü'), t))}</button>`).join('')}</div>`;
-    const first = cs.find(c => c !== '_'); first && say(first, 0.7);
+    $('#toneRow').innerHTML = `<div class="grid4">${[1, 2, 3, 4].map(t => cs[t - 1] && cs[t - 1] !== '_' ? `<button class="btn" data-act="say" data-t="${cs[t - 1]}" data-p="${esc(Core.markSyl(k.replace('v', 'ü'), t))}" data-r="0.8"><span class="t${t}" style="color:var(--t${t})">${esc(Core.markSyl(k.replace('v', 'ü'), t))}</span><br><span class="hz">${cs[t - 1]}</span></button>` : `<button class="btn" disabled>${esc(Core.markSyl(k.replace('v', 'ü'), t))}</button>`).join('')}</div>`;
+    const ti = cs.findIndex(c => c !== '_'); ti >= 0 && say(cs[ti], 0.8, Core.markSyl(k.replace('v', 'ü'), ti + 1));
   });
 };
 V.settings = () => {
@@ -1508,6 +1567,7 @@ V.settings = () => {
   <label class="row"><input type="checkbox" id="s_tc" ${s.toneColors ? 'checked' : ''}> tone colours</label></div>
   <div class="card"><label>Voice <select id="s_voice"><option value="">best available</option>${vs.map(v => `<option ${v.name === s.voice ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select></label>
   <label>Normal speed <input type="text" inputmode="decimal" id="s_rate" value="${s.rate}"></label>
+  <label class="row"><input type="checkbox" id="s_nat" ${s.native ? 'checked' : ''}> native-speaker recordings when available (else the synthetic voice)</label>
   <label>Speech recognition <select id="s_sr"><option value="auto">use when available</option><option value="off">off: always grade myself</option></select></label>
   <button class="btn" data-act="say" data-t="你好，我们开始学习吧。">▶ test voice</button></div>
   <div class="card"><label>Theme <select id="s_th"><option value="auto">system</option><option value="light">light</option><option value="dark">dark</option></select></label>
@@ -1520,7 +1580,7 @@ V.settings = () => {
   $('#s_save').onclick = () => {
     const num = (id, lo, hi, d) => { const v = parseFloat($(id).value); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
     Object.assign(s, { newLimit: num('#s_new', 0, 200, 15) | 0, goal: num('#s_goal', 1, 2000, 60) | 0, retention: num('#s_ret', 0.8, 0.97, 0.9), pinyin: $('#s_py').value, gloss: $('#s_gl').value, toneColors: $('#s_tc').checked,
-      voice: $('#s_voice').value, rate: num('#s_rate', 0.4, 1.6, 0.9), sr: $('#s_sr').value, theme: $('#s_th').value, unlockAll: $('#s_ul').checked });
+      voice: $('#s_voice').value, rate: num('#s_rate', 0.4, 1.6, 0.9), sr: $('#s_sr').value, native: $('#s_nat').checked, theme: $('#s_th').value, unlockAll: $('#s_ul').checked });
     save(); applyTheme(); TTS.pick(); toast('Saved');
   };
   $('#imp').onchange = async e => {
@@ -1538,13 +1598,15 @@ V.help = () => {
   <p><b>Speech out</b>: ${TTS.ok ? '✓ available' : '✗ missing'}${TTS.voice ? ` · voice: ${esc(TTS.voice.name)} (${esc(TTS.voice.lang)})` : ' · no Chinese voice found yet'} · ${TTS.ok ? speechSynthesis.getVoices().length : 0} voices installed, ${TTS.ok ? speechSynthesis.getVoices().filter(v => /^zh|cmn/i.test(v.lang)).length : 0} Chinese. <button class="btn sm" data-act="say" data-t="你好，我们开始学习吧。">▶ test</button><br>No sound? iPhone: flip the ring/silent switch to ring and turn the volume up (speech follows the ringer). iPhone: Settings → Accessibility → Spoken Content → Voices → Chinese (China mainland) → download an "Enhanced" voice. Android: install Google Speech Services and the Chinese (Mandarin) voice data.</p>
   <p><b>Speech recognition</b>: ${SRClass ? '✓ available' : '✗ not in this browser: you will compare recordings and grade yourself'}. Works best in Chrome on Android. On iPhone it uses Siri dictation (turn on Siri & Dictation, add Chinese (Mainland) as a dictation language); it can be flaky inside a home-screen app, so if it fails, open the site in Safari or switch recognition off in settings.</p>
   <p><b>Microphone & pitch</b>: ${navigator.mediaDevices ? '✓' : '✗'} needs HTTPS (or localhost). The tone contour is measured from your voice and compared with tone templates (Chao 55/35/214/51). Speak each syllable clearly; whispering or a noisy room gives no pitch.</p>
+  <p><b>Native recordings</b>: ${D.audio ? `✓ ${D.audioSyl.size} tone syllables and ${D.audioWords.size} words` : '✗ not loaded'}. From <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO): syllables voiced by Chen Wang, words by Yue Tan (shtooka.net), licensed CC BY-SA. Sentences without a recording use the synthetic voice.</p>
+  <p><b>Speech grading</b>: what the recogniser hears is converted to pinyin (<a href="https://github.com/zh-lx/pinyin-pro">pinyin-pro</a>, MIT) and graded by sound and tone, so a same-sounding character counts as right and a wrong tone counts as a tone error.</p>
   <p><b>Handwriting</b>: ${HW_OK() ? '✓ Hanzi Writer loaded' : '✗ Hanzi Writer not loaded (offline on first run?)'}. Stroke data downloads per character and is cached for offline use.</p>
   <p><b>Storage</b>: ${DB.idb ? 'IndexedDB ✓' : 'localStorage fallback'}. iOS can clear site data for apps not opened in a few weeks unless installed to the home screen. Export your progress.</p></div>`;
 };
 
 // ---------------- global actions ----------------
 const ACT = {
-  say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined),
+  say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
   quit: () => { if (confirm('End this session? Progress so far is saved.')) endSession(); },
   reviews: () => startReviews(), weak: () => startWeak(),
   lesson: el => { const l = D.lessons.get(el.dataset.id); if (l && lessonUnlocked(l)) startLesson(l); },
