@@ -1821,6 +1821,7 @@ V.text = (id, lessonId) => {
   <div class="row"><button class="chip ${READ.py ? 'on' : ''}" data-act="rpy">拼音</button><button class="chip ${READ.tr ? 'on' : ''}" data-act="rtr">译文</button><button class="chip" data-act="rall">${ic('play')} 全文</button><button class="chip" data-act="rall" data-r="0.6">${ic('play')} 慢</button><button class="chip" data-act="speed">${ic('timer')} 速读</button></div>
   <div class="reader ${poem ? 'kai center' : ''} ${READ.py ? '' : 'nopy'} ${S().toneColors ? 'tc' : ''}" id="rd">${t.lines.map((l, i) => `<div class="ln" data-li="${i}">${rubyHTML(l.zh, l.p)} <button class="btn sm ic" data-act="say" data-t="${esc(l.zh)}" style="min-height:30px">${ic('play')}</button></div><div class="tr" ${READ.tr ? '' : 'hidden'}>${esc(l.en)}${l.mod ? `<br>白话: ${esc(l.mod)}` : ''}</div>`).join('')}</div>
   ${(t.notes || []).length ? `<details class="card"><summary>${ic('note')}注释 Notes</summary>${t.notes.map(n => `<p class="small">${esc(n)}</p>`).join('')}</details>` : ''}
+  <button class="btn block" data-act="writeText" data-id="${t.id}">默写 Write it from memory</button>
   ${poem ? `<button class="btn block" data-act="recite" data-id="${t.id}">背诵 Recitation mode</button>` : ''}
   <button class="btn block" data-act="tquiz" data-id="${t.id}" data-l="${lessonId || ''}">理解 Questions & cloze</button>
   ${lessonId ? `<button class="btn pri block" data-act="tdone" data-id="${t.id}" data-l="${lessonId}">完成本课 Finish lesson</button>` : ''}`;
@@ -1848,9 +1849,9 @@ function textQuiz(t, lessonId) {
   }
   startSession(tasks, 'check', { onDone: pct => { META.progress.lessons['read:' + t.id] = Date.now(); save(); go(`#text/${t.id}${lessonId ? '/' + lessonId : ''}`); toast(`Questions: ${pct}%`); } });
 }
-function recite(t) {
+function recite(t, start = 0) {
   const steps = ['听 Listen', '跟读 Read along', '提示背 Prompted', '背诵 From memory', '默写 Write'];
-  let step = 0;
+  let step = start;
   const host = () => view;
   function render() {
     const lines = t.lines;
@@ -1880,7 +1881,7 @@ function recite(t) {
     const box = $('#rw');
     if (i >= t.lines.length) { box.innerHTML = `<div class="card center">默写完成 · ${miss} stroke mistakes</div>`; return; }
     const l = t.lines[i];
-    box.innerHTML = `<div class="card hz kai">${t.lines.slice(0, i).map(x => esc(x.zh)).join('<br>')}</div><div class="small muted center">line ${i + 1}: ${esc(l.en)}</div><div data-r="hw"></div>`;
+    box.innerHTML = `${i ? `<div class="card hz kai">${t.lines.slice(0, i).map(x => esc(x.zh)).join('<br>')}</div>` : ''}<div class="small muted center">line ${i + 1}: ${esc(l.en)}</div><div data-r="hw"></div>`;
     writeChars($('[data-r=hw]', box), l.zh, { outline: false, onDone: r => writeLine(i + 1, 0, miss + Math.min(r.mistakes, 99)) });
   }
   render();
@@ -2115,6 +2116,7 @@ const ACT = {
   rtr: el => { READ.tr = !READ.tr; $$('#rd .tr').forEach(e => e.hidden = !READ.tr); el.classList.toggle('on', READ.tr); },
   rall: async el => { const lines = $$('#rd .ln'); const id = location.hash.split('/')[1]; const t = D.texts.get(id); for (let i = 0; i < t.lines.length; i++) { lines.forEach((e, k) => e.classList.toggle('hl', k === i)); await say(t.lines[i].zh, el.dataset.r ? +el.dataset.r : undefined); } lines.forEach(e => e.classList.remove('hl')); },
   recite: el => recite(D.texts.get(el.dataset.id)),
+  writeText: el => recite(D.texts.get(el.dataset.id), 4),
   tquiz: el => textQuiz(D.texts.get(el.dataset.id), el.dataset.l),
   speed: () => speedRead(D.texts.get(location.hash.split('/')[1])),
   tdone: el => { const l = D.lessons.get(el.dataset.l); META.progress.lessons['read:' + el.dataset.id] = Date.now(); markLesson(l); go('#unit/' + l.unit); },
