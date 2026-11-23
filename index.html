@@ -232,6 +232,42 @@ textarea{min-height:120px}
 #ex > .card .card rt{font-size:11px;letter-spacing:0}
 #ex .tag{margin-top:6px}
 
+
+/* polish: buttons */
+.btn{box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.btn:focus-visible{outline:2px solid var(--seal);outline-offset:3px}
+.btn.pri,.grades .btn.sug{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 22px -14px rgba(0,0,0,.55)}
+.cta{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 26px -14px color-mix(in srgb,var(--seal) 85%,transparent)!important;letter-spacing:.04em}
+.btn .ico{width:14px;height:14px}
+.tbtn:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+/* polish: right / wrong marks as filled badges */
+#ex .opt.ok::after,#ex .opt.no::after{width:24px;height:24px;margin-top:-12px;border-radius:50%;-webkit-mask:none;mask:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 12.5l3.8 3.8 7.2-8' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat,var(--good);animation:badge .35s cubic-bezier(.3,1.6,.5,1)}
+#ex .opt.no::after{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 8l8 8M16 8l-8 8' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") center/16px no-repeat,var(--bad)}
+@keyframes badge{from{transform:scale(.3);opacity:0}}
+.fbh .ico{animation:badge .35s cubic-bezier(.3,1.6,.5,1)}
+.vrow .ico{width:22px;height:22px;padding:4px;border-radius:50%;background:var(--ink);color:var(--paper);stroke-width:2.6}
+.rnode.done .ico{animation:badge .4s cubic-bezier(.3,1.6,.5,1) both}
+/* help: live checks */
+.hsum{margin:-2px 0 16px;font:500 15px/1.5 var(--ui);color:var(--muted)}
+.hsum b{font:900 22px var(--song);color:var(--ink)}
+.checks{border-top:1px solid var(--line)}
+.chk{padding:16px 2px 6px;border-bottom:1px solid var(--line)}
+.chk-top{display:flex;align-items:flex-start;gap:12px}
+.chk-top b{display:block;font:700 16px/1.35 var(--song)}
+.chk-d{display:block;margin-top:2px;font-size:13px;line-height:1.5;color:var(--muted)}
+.chk-dot{flex:none;width:10px;height:10px;margin-top:7px;border-radius:50%;background:var(--line)}
+.chk-st{margin:8px 0 0 22px;font:600 13px var(--ui);color:var(--muted)}
+.chk[data-st=ok] .chk-dot{background:var(--good)}.chk[data-st=ok] .chk-st{color:var(--good)}
+.chk[data-st=warn] .chk-dot{background:var(--warn)}.chk[data-st=warn] .chk-st{color:var(--warn)}
+.chk[data-st=bad] .chk-dot{background:var(--bad)}.chk[data-st=bad] .chk-st{color:var(--bad)}
+.chk[data-st=wait] .chk-dot{background:var(--seal);animation:fadein .6s ease-in-out infinite alternate}
+.chk details{margin:4px 0 0 22px;border:0;padding:0}
+.chk summary{min-height:36px;font-size:13px;color:var(--ink2);justify-content:flex-start;gap:8px}
+.chk ul{margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--ink2)}
+.chk li+li{margin-top:4px}
+.chk:not([data-st=ok]) details{display:block}
+.chk[data-st=ok] details{display:none}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -1976,14 +2012,37 @@ V.settings = () => {
   };
 };
 V.help = () => {
-  view.innerHTML = `<h2>帮助 Help</h2><div class="card small">
-  <p><b>Speech out</b>: ${TTS.ok ? ic('check') + ' available' : ic('close') + ' missing'}${TTS.voice ? ` · voice: ${esc(TTS.voice.name)} (${esc(TTS.voice.lang)})` : ' · no Chinese voice found yet'} · ${TTS.ok ? speechSynthesis.getVoices().length : 0} voices installed, ${TTS.ok ? speechSynthesis.getVoices().filter(v => /^zh|cmn/i.test(v.lang)).length : 0} Chinese. <button class="btn sm" data-act="say" data-t="你好，我们开始学习吧。">${ic('play')} test</button><br>No sound? iPhone: flip the ring/silent switch to ring and turn the volume up (speech follows the ringer). iPhone: Settings → Accessibility → Spoken Content → Voices → Chinese (China mainland) → download an "Enhanced" voice. Samsung: Settings › General management › Text-to-speech › Preferred engine: Samsung TTS, then its gear › Install voice data › 中文 (中国); then pick Phone voice in this app's settings. Other Android phones: Speech Services by Google with Chinese (Mandarin) voice data.</p>
-  <p><b>Speech recognition</b>: ${SRClass ? ic('check') + ' available' : ic('close') + ' not in this browser: you will compare recordings and grade yourself'}. Works best in Chrome on Android. On iPhone it uses Siri dictation (turn on Siri & Dictation, add Chinese (Mainland) as a dictation language); it can be flaky inside a home-screen app, so if it fails, open the site in Safari or switch recognition off in settings.</p>
-  <p><b>Microphone & pitch</b>: ${navigator.mediaDevices ? ic('check') : ic('close')} needs HTTPS (or localhost). The tone contour is measured from your voice and fitted to tone templates (55 / 35 / 214, or 21 before another tone / 51). It learns your pitch range from your two-syllable recordings${META.voice && META.voice.n ? `: calibrated from ${META.voice.n} so far` : ''}. A near miss shows ≈ and doesn't count against you. Speak each syllable clearly; whispering or a noisy room gives no pitch.</p>
-  <p><b>Native recordings</b>: ${D.audio ? `${ic('check')} ${D.audioSyl.size} tone syllables and ${D.audioWords.size} words` : ic('close') + ' not loaded'}. From <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO): syllables voiced by Chen Wang, words by Yue Tan (shtooka.net), licensed CC BY-SA. Everything else (sentences, rhymes, poems, dialogues) is built-in audio generated once with a neural voice (${esc((D.voice || {}).voice || 'not loaded')}, ${D.voice ? Object.keys(D.voice.files).length : 0} clips) and shipped with the app.</p>
-  <p><b>Speech grading</b>: what the recogniser hears is converted to pinyin (<a href="https://github.com/zh-lx/pinyin-pro">pinyin-pro</a>, MIT) and graded by sound and tone, so a same-sounding character counts as right and a wrong tone counts as a tone error.</p>
-  <p><b>Handwriting</b>: ${HW_OK() ? ic('check') + ' Hanzi Writer loaded' : ic('close') + ' Hanzi Writer not loaded (offline on first run?)'}. Stroke data downloads per character and is cached for offline use.</p>
-  <p><b>Storage</b>: ${DB.idb ? 'IndexedDB ' + ic('check') : 'localStorage fallback'}. iOS can clear site data for apps not opened in a few weeks unless installed to the home screen. Export your progress.</p></div>`;
+  const SAMSUNG = 'Samsung: Settings › General management › Text-to-speech › Preferred engine: Samsung TTS › gear › Install voice data › 中文 (中国).';
+  const IPHONE = 'iPhone: Settings › Accessibility › Spoken Content › Voices › Chinese (China mainland) › download an Enhanced voice.';
+  const checks = [
+    { id: 'audio', t: 'Built-in audio', d: 'Recordings for every word, sentence, poem and dialogue.', fix: ['Turn the volume up. On iPhone, flip the ring/silent switch to ring: web audio follows it.', 'The files stream the first time and are saved for offline use after that.'],
+      run: async () => { if (!D.voice || !D.audio) return ['bad', 'Audio list did not load']; const r = await fetch(Native.url('我们是一家人。')).catch(() => null); return r && r.ok ? ['ok', `${Object.keys(D.voice.files).length + D.audioWords.size} recordings ready`] : ['warn', 'Recordings could not be reached (offline?)']; },
+      test: () => say('我们是一家人。') },
+    { id: 'phone', t: 'Phone voice', d: 'Your phone\'s own speech engine. Only used if you choose Phone voice in Settings.', fix: [SAMSUNG, IPHONE, 'Then reopen the app and pick the voice in Settings › Sound.'],
+      run: async () => { if (!TTS.ok) return ['bad', 'This browser has no speech engine']; const n = speechSynthesis.getVoices().filter(v => /^zh|cmn/i.test(v.lang)).length; return n ? ['ok', `${n} Chinese voice${n > 1 ? 's' : ''}${TTS.voice ? ': ' + TTS.voice.name : ''}`] : ['warn', 'No Chinese voice installed']; },
+      test: () => TTS.speak('你好，我们开始学习吧。') },
+    { id: 'mic', t: 'Microphone', d: 'Records you for speaking drills and measures your tones.', fix: ['When asked, tap Allow.', 'If you tapped Block: tap the lock icon next to the web address › Permissions › Microphone › Allow.', 'The app must be opened over https (the GitHub link is fine).'],
+      run: async () => { if (!navigator.mediaDevices || !window.isSecureContext) return ['bad', 'Needs https']; try { const q = await navigator.permissions.query({ name: 'microphone' }); return q.state === 'granted' ? ['ok', 'Allowed'] : q.state === 'denied' ? ['bad', 'Blocked in browser settings'] : ['warn', 'Not allowed yet: tap Test']; } catch (e) { return ['warn', 'Tap Test to check']; } },
+      test: async row => { try { let peak = 0; await Mic.start(e => { peak = Math.max(peak, e); }); setStatus(row, 'wait', 'Say something…'); await new Promise(r => setTimeout(r, 2500)); await Mic.stop(); setStatus(row, peak > 0.02 ? 'ok' : 'warn', peak > 0.02 ? 'Heard you clearly' : 'Very quiet: check the mic isn\'t covered'); } catch (e) { setStatus(row, 'bad', 'Blocked: see how to fix'); } } },
+    { id: 'sr', t: 'Speech recognition', d: 'Turns what you say into text so speaking answers are graded for you.', fix: ['Works best in Chrome on Android.', 'iPhone: turn on Siri & Dictation and add Chinese (Mainland) as a dictation language. It can be unreliable inside a home-screen app: try Safari.', 'Without it, you compare your recording with the model and grade yourself.'],
+      run: async () => !SRClass ? ['bad', 'Not in this browser: you grade yourself'] : S().sr === 'off' ? ['warn', 'Switched off in Settings'] : ['ok', 'Available: tap Test and say 你好'],
+      test: async row => { const r = recognize(); if (!r) return setStatus(row, 'bad', 'Could not start'); setStatus(row, 'wait', 'Listening… say 你好'); try { const alts = await Promise.race([r.p, new Promise(res => setTimeout(() => { r.stop(); res([]); }, 6000))]); setStatus(row, alts.length ? 'ok' : 'warn', alts.length ? `Heard: ${alts[0]}` : 'Heard nothing'); } catch (e) { setStatus(row, 'bad', `Error: ${e}`); } } },
+    { id: 'hw', t: 'Handwriting', d: 'Stroke-by-stroke checking when you write characters.', fix: ['Needs internet the first time you write each character; it is then saved for offline use.'],
+      run: async () => { if (!HW_OK()) return ['bad', 'Writing library did not load (offline?)']; const r = await fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/' + encodeURIComponent('一') + '.json').catch(() => null); return r && r.ok ? ['ok', 'Ready'] : ['warn', 'Stroke data unreachable (offline?)']; } },
+    { id: 'pp', t: 'Pinyin grading', d: 'Checks your spoken answers by sound and tone, so same-sounding characters count.', fix: ['Loads once from the internet, then works offline.'],
+      run: async () => (await loadPinyinPro()) ? ['ok', 'Ready'] : ['warn', 'Could not load (offline?)'] },
+    { id: 'off', t: 'Works offline', d: 'Lessons you have opened keep working without internet.', fix: ['Open the app once while online, then reload it.', 'Android: ⋮ › Install app. iPhone: Share › Add to Home Screen.'],
+      run: async () => { const inst = matchMedia('(display-mode: standalone)').matches || navigator.standalone; const sw = !!(navigator.serviceWorker && navigator.serviceWorker.controller); return sw ? ['ok', inst ? 'Installed and ready offline' : 'Ready offline (not installed to home screen)'] : ['warn', 'Reload once to enable']; } },
+    { id: 'store', t: 'Saving progress', d: 'Your progress is stored on this phone only.', fix: ['Export your progress now and then: Settings › Export progress.', 'On iPhone, sites not installed to the home screen can be cleared after a few weeks unused.'],
+      run: async () => { if (!DB.idb) return ['warn', 'Using basic storage: export regularly']; const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false; return ['ok', kept ? 'Saved permanently on this phone' : 'Saved on this phone']; } }
+  ];
+  view.innerHTML = `<h2>帮助 Help</h2><p class="hsum" id="hsum">Checking this phone…</p>
+    <div class="checks">${checks.map(c => `<div class="chk" data-id="${c.id}"><div class="chk-top"><span class="chk-dot"></span><div class="grow"><b>${c.t}</b><span class="chk-d">${c.d}</span></div>${c.test ? `<button class="btn sm" data-test="${c.id}">${ic('play')} Test</button>` : ''}</div>
+      <div class="chk-st">Checking…</div><details><summary>How to fix</summary><ul>${c.fix.map(f => `<li>${esc(f)}</li>`).join('')}</ul></details></div>`).join('')}</div>
+    <h3>Credits</h3><p class="small muted">Recordings: <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO; voices Chen Wang and Yue Tan), CC BY-SA. Other audio: generated with a neural voice. Pinyin: <a href="https://github.com/zh-lx/pinyin-pro">pinyin-pro</a> (MIT). Strokes: Hanzi Writer and Make Me a Hanzi.</p>`;
+  const tally = () => { const st = $$('.chk').map(r => r.dataset.st); const ok = st.filter(x => x === 'ok').length; $('#hsum') && ($('#hsum').innerHTML = `<b>${ok}</b> of ${st.length} working on this phone${st.includes('bad') || st.includes('warn') ? '. Tap “How to fix” on the others.' : '.'}`); };
+  window.setStatus = (row, st, msg) => { row.dataset.st = st; $('.chk-st', row).textContent = msg; tally(); };
+  checks.forEach(async c => { const row = $(`.chk[data-id=${c.id}]`); try { const [st, msg] = await c.run(); setStatus(row, st, msg); } catch (e) { setStatus(row, 'warn', 'Could not check'); } if (c.test) $(`[data-test=${c.id}]`, row).onclick = () => c.test(row); });
 };
 
 // ---------------- global actions ----------------
