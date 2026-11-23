@@ -12,6 +12,7 @@
 <link rel="icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&family=Noto+Serif:wght@600;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@500;700&text=%C4%81%C3%A1%C7%8E%C3%A0%C4%93%C3%A9%C4%9B%C3%A8%C4%AB%C3%AD%C7%90%C3%AC%C5%8D%C3%B3%C7%92%C3%B2%C5%AB%C3%BA%C7%94%C3%B9%C7%96%C7%98%C7%9A%C7%9C%C3%BC%C4%80%C3%81%C7%8D%C3%80%C4%92%C3%89%C4%9A%C3%88%C4%AA%C3%8D%C7%8F%C3%8C%C5%8C%C3%93%C7%91%C3%92%C5%AA%C3%9A%C7%93%C3%99&display=swap">
 <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>长大 · Grow Up in Chinese</title>
@@ -22,7 +23,7 @@
 --seal:#C23B22;--seal-d:#9F2D18;--good:#2F6B4F;--bad:#C23B22;--warn:#A86A12;--gold:#B8892B;--orange:#D17A22;
 --t1:#C23B22;--t2:#D17A22;--t3:#2F7D57;--t4:#2A5DA8;--t5:#8A8F96;
 --hw-outline:#DCD6CC;--press:#9F2D18;
---song:"Noto Serif","Noto Serif SC","Songti SC","STSong","SimSun",serif;--hz:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;--ui:"Satoshi",-apple-system,"Segoe UI",Roboto,var(--hz);--kai:"Kaiti SC","STKaiti","KaiTi","BiauKai",var(--song);
+--song:"Noto Serif","Noto Serif SC","Songti SC","STSong","SimSun",serif;--hz:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;--ui:"Noto Sans","Satoshi",-apple-system,"Segoe UI",Roboto,var(--hz);--kai:"Kaiti SC","STKaiti","KaiTi","BiauKai",var(--song);
 --ease:cubic-bezier(.2,.7,.1,1);--r:12px;--accent:var(--ink);--accent-ink:var(--paper);--bg:var(--paper)}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#11100E;--card:#1A1815;--ink:#EEEAE3;--ink2:#CFC9BF;--muted:#9A9389;--line:#2C2925;--line2:#2C2925;--soft:#211F1B;--seal:#D9553B;--seal-d:#A93D27;--good:#5EA883;--bad:#E0664D;--t1:#E0664D;--t2:#E39445;--t3:#5EA883;--t4:#6B9BE0;--hw-outline:#36322D;--press:#A93D27}}
 :root[data-theme=dark]{--paper:#11100E;--card:#1A1815;--ink:#EEEAE3;--ink2:#CFC9BF;--muted:#9A9389;--line:#2C2925;--line2:#2C2925;--soft:#211F1B;--seal:#D9553B;--seal-d:#A93D27;--good:#5EA883;--bad:#E0664D;--t1:#E0664D;--t2:#E39445;--t3:#5EA883;--t4:#6B9BE0;--hw-outline:#36322D;--press:#A93D27}
@@ -48,7 +49,7 @@ nav a b{display:block;font:600 20px/1.2 var(--song);margin-bottom:1px}
 nav a.on{color:var(--ink)}
 nav a.on b{font-weight:900}
 nav a.on::after{content:"";position:absolute;top:-1px;left:50%;width:18px;height:2px;margin-left:-9px;background:var(--seal)}
-body.in-session nav{display:none}
+body.in-session nav,body.in-session>header{display:none}
 body.in-session{padding-bottom:46vh}
 
 /* type */
@@ -115,6 +116,7 @@ textarea{min-height:120px}
 .bar{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--seal);transition:width .5s var(--ease)}
 .prog{position:sticky;top:51px;z-index:4;padding:10px 0;background:var(--paper)}
+body.in-session .prog{top:0;padding-top:calc(10px + env(safe-area-inset-top))}
 .combo{flex:none;font:700 12px var(--ui);color:var(--seal);letter-spacing:.04em;animation:fadein .4s var(--ease)}
 @keyframes fadein{from{opacity:0;transform:translateY(3px)}}
 
@@ -321,6 +323,15 @@ canvas.brush{display:block;touch-action:none;cursor:crosshair}
 .goals li{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);font-size:15px}
 .goals li svg{width:18px;height:18px;color:var(--seal);flex:none}
 .goalw{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin:6px 0 16px;font:600 22px var(--song)}
+
+
+/* play control */
+.play{display:flex;justify-content:center;align-items:center;gap:14px;margin:14px 0}
+.playbig{width:64px;height:64px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--seal);color:#fff;cursor:pointer;box-shadow:0 8px 20px -6px color-mix(in srgb,var(--seal) 60%,transparent),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .12s var(--ease)}
+.playbig .ico{width:24px;height:24px;fill:currentColor;margin-left:3px}
+.playslow{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 15px var(--hz);cursor:pointer;transition:transform .12s var(--ease)}
+.playbig:active,.playslow:active{transform:scale(.93)}
+.fc b{position:absolute;top:-17px;left:0;right:0;text-align:center;font:700 11px var(--ui);color:var(--ink)}
 
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
@@ -950,7 +961,7 @@ function itemHead(it, { py = pinyinMode(it), size = '' } = {}) {
 }
 // ink echo stack: the character plus four fading ink-wash copies behind it
 const echoHTML = (t, size) => `<div class="echo"${size ? ` style="--es:${size}"` : ''}>${esc(t)}</div>`;
-const audioBtns = (t, extra = '') => `<span class="row" style="justify-content:center"><button class="btn sm" data-act="say" data-t="${esc(t)}">${ic('play')} 正常</button><button class="btn sm" data-act="say" data-t="${esc(t)}" data-r="0.6">${ic('play')} 慢</button>${extra}</span>`;
+const audioBtns = (t, r) => `<div class="play"><button class="playbig" data-act="say" data-t="${esc(t)}"${r ? ` data-r="${r}"` : ''} aria-label="Play">${ic('play')}</button><button class="playslow" data-act="say" data-t="${esc(t)}" data-r="0.6" aria-label="Play slowly">慢</button></div>`;
 
 // ---------------- speech out ----------------
 const TTS = {
@@ -1604,13 +1615,13 @@ EX.listenMC = (host, it, cb) => {
 };
 EX.listenType = (host, it, cb) => {
   const r = listenRate(it);
-  host.innerHTML = `<p class="muted center">Listen and type the pinyin with tones</p><div class="center small muted">speed ${r}×</div>${audioBtns(it.s, `<button class="btn sm" data-act="say" data-t="${esc(it.s)}" data-r="${r}">${ic('play')} ${r}×</button>`)}${pyInput(host)}`;
+  host.innerHTML = `<p class="muted center">Listen and type the pinyin with tones</p>${audioBtns(it.s, r)}${pyInput(host)}`;
   setTimeout(() => say(it.s, r), 200);
   bindPy(host, v => cb(gradePy(it, v)));
 };
 EX.dictation = (host, it, cb) => {
   const e = pick(it.ex), r = listenRate(it);
-  host.innerHTML = `<p class="muted center">Dictation: write the sentence in characters</p>${audioBtns(e.zh, `<button class="btn sm" data-act="say" data-t="${esc(e.zh)}" data-r="${r}">${ic('play')} ${r}×</button>`)}<input type="text" data-r="in" placeholder="汉字…" autocomplete="off"><button class="btn pri block" data-r="go">Check</button>`;
+  host.innerHTML = `<p class="muted center">Dictation: write the sentence in characters</p>${audioBtns(e.zh, r)}<input type="text" data-r="in" placeholder="汉字…" autocomplete="off"><button class="btn pri block" data-r="go">Check</button>`;
   setTimeout(() => say(e.zh, r), 200);
   const go = () => { const v = $('[data-r=in]', host).value; const sim = Core.charSim(v, e.zh);
     const diff = Core.charDiff(v, e.zh).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('');
@@ -1666,7 +1677,7 @@ EX.listenSentence = (host, it, cb) => { // hear a whole sentence at natural spee
   const e = pick(it.ex || []); if (!e) return EX.listenType(host, it, cb);
   const pool = [...D.items.values()].filter(x => x.unit === it.unit && x.id !== it.id).flatMap(x => x.ex || []).filter(x => x.en !== e.en);
   const opts = shuffle([e, ...sample(pool, 3)]), r = Math.max(0.85, listenRate(it));
-  host.innerHTML = `<p class="muted center">Listen. What does the sentence mean?</p>${audioBtns(e.zh, `<button class="btn sm" data-act="say" data-t="${esc(e.zh)}" data-r="${r}">${ic('play')} ${r}×</button>`)}${mcHTML(opts, o => esc(o.en))}`;
+  host.innerHTML = `<p class="muted center">Listen. What does the sentence mean?</p>${audioBtns(e.zh, r)}${mcHTML(opts, o => esc(o.en))}`;
   setTimeout(() => say(e.zh, r), 200);
   bindMC(host, opts, opts.indexOf(e), res => cb({ ...res, noAudio: true, why: sentReveal(e) }));
 };
@@ -1864,6 +1875,7 @@ function startCram(unitId) {
 // ---------------- views ----------------
 function go(h) { if (location.hash === h) route(); else location.hash = h; }
 const V = {};
+const ph = (zh, en) => `<section class="uhead"><h2 class="display">${zh}</h2><p class="en">${en}</p></section>`;
 V.today = () => {
   const due = dueCards(), by = {}; due.forEach(c => by[c.skill] = (by[c.skill] || 0) + 1);
   const st = dayStat(), nl = nextLesson(), weakN = Object.keys(META.weak).length, newLeft = Math.max(0, S().newLimit - st.new);
@@ -1890,10 +1902,10 @@ function forecastHTML(days) {
   const now = Date.now(), counts = Array(days).fill(0), start = new Date(now - 4 * 3600e3); start.setHours(4, 0, 0, 0);
   for (const c of CARDS.values()) { if (c.st === 0) continue; const d = Math.floor((Math.max(c.due, now) - start.getTime()) / 864e5); if (d >= 0 && d < days) counts[d]++; }
   const mx = Math.max(1, ...counts);
-  return `<div class="fc">${counts.map((n, i) => `<div style="height:${n / mx * 100}%" title="${n} due"><span>${i === 0 ? '今' : '+' + i}</span></div>`).join('')}</div><div class="small muted" style="margin-top:26px">${counts.join('　')}</div>`;
+  return `<div class="fc">${counts.map((n, i) => `<div style="height:${n / mx * 100}%" title="${n} due">${n ? `<b>${n}</b>` : ''}<span>${i === 0 ? '今' : '+' + i}</span></div>`).join('')}</div><div style="height:26px"></div>`;
 }
 V.course = () => {
-  view.innerHTML = `<h2>课程 Course</h2>` + D.stages.map(st => {
+  view.innerHTML = `${ph('课程', 'Course')}` + D.stages.map(st => {
     const us = unitsOfStage(st.n), open = st.n === 1 || stagePassed(st.n - 1) || S().unlockAll;
     return `<div class="card ${open ? '' : 'lock'}"><div class="row"><b class="grow hz">第${st.n}阶段 ${esc(st.title)}</b><span class="small muted">${esc(st.en)}</span></div>
     ${us.length ? `<div class="list">${us.map(u => { const ok = unitUnlocked(u), sc = META.progress.units[u.id]; const done = u.lessons.filter(l => lessonDone(l.id)).length;
@@ -1931,7 +1943,7 @@ V.unit = id => {
 V.library = () => {
   const open = D.units.filter(unitUnlocked);
   const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言' };
-  view.innerHTML = `<h2>书库 Library</h2><p class="small muted">Every text from the units you've reached.</p>` + open.map(u => (u.texts || []).length ? `<h3 class="hz">${esc(u.title)}</h3><div class="notes">${u.texts.map(t => `<a class="note" href="#text/${t.id}"><span class="tag">${kinds[t.kind] || t.kind}</span>${META.progress.lessons['read:' + t.id] ? ic('check') : ''}<b class="hz">${esc(t.title)}</b><span class="sig">${esc((t.src || '').split(/[(,·]/)[0].trim())}</span></a>`).join('')}</div>` : '').join('');
+  view.innerHTML = `${ph('书库', 'Library')}<p class="small muted">Every text from the units you've reached.</p>` + open.map(u => (u.texts || []).length ? `<h3 class="hz">${esc(u.title)}</h3><div class="notes">${u.texts.map(t => `<a class="note" href="#text/${t.id}"><span class="tag">${kinds[t.kind] || t.kind}</span>${META.progress.lessons['read:' + t.id] ? ic('check') : ''}<b class="hz">${esc(t.title)}</b><span class="sig">${esc((t.src || '').split(/[(,·]/)[0].trim())}</span></a>`).join('')}</div>` : '').join('');
 };
 let READ = { py: true, tr: false };
 V.text = (id, lessonId) => {
@@ -2010,7 +2022,7 @@ function recite(t, start = 0) {
 }
 function speedRead(t) {
   const n = t.lines.reduce((a, l) => a + [...l.zh].filter(Core.isHan).length, 0);
-  view.innerHTML = `<h2>速读 Speed reading</h2><p class="small muted">${n} characters. No pinyin. Read for meaning, then tap done.</p><div class="reader">${t.lines.map(l => `<div class="ln">${esc(l.zh)}</div>`).join('')}</div><button class="btn pri block" data-r="done">读完了 Done</button>`;
+  view.innerHTML = `${ph('速读', 'Speed reading')}<p class="small muted">${n} characters. No pinyin. Read for meaning, then tap done.</p><div class="reader">${t.lines.map(l => `<div class="ln">${esc(l.zh)}</div>`).join('')}</div><button class="btn pri block" data-r="done">读完了 Done</button>`;
   const t0 = Date.now();
   $('[data-r=done]').onclick = () => { const cpm = Math.round(n / ((Date.now() - t0) / 60000)); const best = META.progress['speed:' + t.id]; META.progress['speed:' + t.id] = Math.max(best || 0, cpm); save();
     view.insertAdjacentHTML('beforeend', `<div class="card center"><div class="big md">${cpm}</div>characters per minute${best ? ` · best ${best}` : ''}<p class="small muted">Native adults read about 300–500 cpm.</p></div><button class="btn block" data-act="tquiz" data-id="${t.id}">Comprehension questions</button>`); };
@@ -2054,15 +2066,15 @@ V.scen = (id, lessonId) => {
 V.dict = () => {
   const learned = new Set([...CARDS.values()].map(c => c.item));
   const all = [...D.items.values()].filter(it => it.k !== 'syl' && (learned.has(it.id) || unitUnlocked(D.unitById.get(it.unit) || { stage: 1, n: 1 })));
-  view.innerHTML = `<h2>字典 Dictionary</h2><input type="text" id="q" placeholder="汉字 / pinyin / English"><div class="row small muted" style="margin:6px 0"><label><input type="checkbox" id="onlyL" checked> learned only</label><span class="grow"></span><span id="cnt"></span></div><div id="res"></div>`;
+  view.innerHTML = `${ph('字典', 'Dictionary')}<input type="text" id="q" placeholder="汉字 / pinyin / English"><div class="row small muted" style="margin:6px 0"><button class="chip on" id="onlyL" aria-pressed="true">已学 Learned only</button><span class="grow"></span><span id="cnt"></span></div><div id="res"></div>`;
   const draw = () => {
-    const q = $('#q').value.trim().toLowerCase(), only = $('#onlyL').checked;
+    const q = $('#q').value.trim().toLowerCase(), only = $('#onlyL').classList.contains('on');
     const qb = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const list = all.filter(it => (!only || learned.has(it.id)) && (!q || it.s.includes(q) || it.en.toLowerCase().includes(q) || it.p.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s/g, '').includes(qb.replace(/\s/g, '')))).slice(0, 300);
     $('#cnt').textContent = list.length + ' entries';
     $('#res').innerHTML = `<div class="list">${list.map(it => `<a href="#entry/${encodeURIComponent(it.id)}" class="li"><span class="hz">${esc(it.s)}</span><span class="grow"><span class="tc small">${pyHTML(it.s, it.p)}</span><br><span class="small">${esc(it.en)}</span></span>${masteryDots(it)}</a>`).join('')}</div>`;
   };
-  $('#q').oninput = draw; $('#onlyL').onchange = draw; draw();
+  $('#q').oninput = draw; $('#onlyL').onclick = e => { const on = e.currentTarget.classList.toggle('on'); e.currentTarget.setAttribute('aria-pressed', on); draw(); }; draw();
 };
 function masteryDots(it) { return `<span class="small">${skillsFor(it).map(sk => { const c = CARDS.get(it.id + '|' + sk); const s = c && c.st === 2 ? c.s : 0; return `<span title="${sk}" style="opacity:${c ? 0.35 + Math.min(1, s / 21) * 0.65 : 0.15}">${SK_ZH[sk]}</span>`; }).join('')}</span>`; }
 V.entry = id => {
@@ -2091,9 +2103,9 @@ V.mistakes = () => { // 错题本: every card you keep missing, why, and one tap
 };
 V.more = () => {
   const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
-  view.innerHTML = `<h2>更多 More</h2><div class="list">${rows.map(([h, i, z, e]) => `<a href="${h}">${ic(i)}<span class="grow"><b class="hz">${z}</b> <span class="small muted">${e}</span></span>${ic('chev')}</a>`).join('')}</div>`;
+  view.innerHTML = `${ph('更多', 'More')}<div class="list">${rows.map(([h, i, z, e]) => `<a href="${h}">${ic(i)}<span class="grow"><b class="hz">${z}</b> <span class="small muted">${e}</span></span>${ic('chev')}</a>`).join('')}</div>`;
 };
-V.scens = () => { view.innerHTML = `<h2>情景 Scenarios</h2><div class="list">${[...D.scen.values()].filter(s => unitUnlocked(D.unitById.get(s.unit))).map(s => `<a href="#scen/${s.id}"><span class="grow hz">${esc(s.title)}</span><span class="small muted">${META.progress.scen[s.id] != null ? META.progress.scen[s.id] + '%' : ''}</span>›</a>`).join('')}</div>`; };
+V.scens = () => { view.innerHTML = `${ph('情景', 'Scenarios')}<div class="list">${[...D.scen.values()].filter(s => unitUnlocked(D.unitById.get(s.unit))).map(s => `<a href="#scen/${s.id}"><span class="grow hz">${esc(s.title)}</span><span class="small muted">${META.progress.scen[s.id] != null ? META.progress.scen[s.id] + '%' : ''}</span>›</a>`).join('')}</div>`; };
 const RINGC = ['var(--seal)', 'var(--orange)', 'var(--gold)', 'var(--t4)'];
 V.dash = () => {
   const cs = [...CARDS.values()];
@@ -2118,10 +2130,10 @@ V.dash = () => {
     weakN && `<a class="btn block" href="#mistakes">${ic('alert')} 错题本: ${weakN} card${weakN > 1 ? 's' : ''} you keep missing</a>`,
     toneWorst && toneWorst[1].ok / toneWorst[1].n < 0.8 && `<button class="btn block" data-act="tonedrill" data-t="${toneWorst[0]}">${ic('tones')} Tone ${toneWorst[0]} is your weakest (${Math.round(toneWorst[1].ok / toneWorst[1].n * 100)}%): ear drill</button>`,
     !due && nextLesson() && `<button class="btn block" data-act="lesson" data-id="${nextLesson().id}">${ic('play')} Next lesson: ${esc(nextLesson().title)}</button>`].filter(Boolean);
-  view.innerHTML = `<h2>学习情况 Dashboard</h2>
+  view.innerHTML = `${ph('学习情况', 'Dashboard')}
   ${next.length ? `<div class="card"><b>下一步 · What to do next</b>${skillLow ? `<p class="small muted">Your least-developed skill is ${SK_ZH[skillLow]} ${skillLow}. Lessons and reviews mix it in.</p>` : ''}${next.join('')}</div>` : ''}
   <div class="grid2"><div class="stat"><b>${words}</b>words (reading)</div><div class="stat"><b>${readChars.size}</b>characters recognised</div><div class="stat"><b>${writeChars.size}</b>characters you can handwrite</div><div class="stat"><b>${acc[1] ? Math.round(acc[0] / acc[1] * 100) : 0}%</b>accuracy, 14 days</div></div>
-  <div class="card"><b>Level</b><p>Estimated <b>${hsk}</b>. Reading level of <b>${age}</b>.</p><p class="small muted">From words and characters at least in review in the reading skill.</p></div>
+  <div class="card"><b>Level</b><p>${words < 300 ? `<b>${300 - words}</b> words to HSK 1 (partial, 300 words).` : `Estimated <b>${hsk}</b>.`} Characters you recognise put you at the reading level of <b>${age}</b>.</p><p class="small muted">From words and characters at least in review in the reading skill.</p></div>
   <div class="card skills"><svg viewBox="0 0 180 180" class="rings" role="img" aria-label="Share of cards learned per skill">${SKILLS.map((sk, i) => { const tot = Math.max(1, cs.filter(c => c.skill === sk).length), r = 80 - i * 17, C = 2 * Math.PI * r, f = known(sk) / tot;
       return `<circle cx="90" cy="90" r="${r}" fill="none" stroke="var(--line2)" stroke-width="12"/><circle class="ring" cx="90" cy="90" r="${r}" fill="none" stroke="${RINGC[i]}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - f)).toFixed(1)}" transform="rotate(-90 90 90)" style="--c:${C.toFixed(1)}"/>`; }).join('')}</svg>
     <div class="legend">${SKILLS.map((sk, i) => `<div><i style="background:${RINGC[i]}"></i><b>${SK_ZH[sk]}</b><span>${known(sk)} learned<br>${mature(sk)} solid</span></div>`).join('')}</div></div>
@@ -2165,7 +2177,7 @@ V.chart = () => {
   const IN = ['', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'zh', 'ch', 'sh', 'r', 'z', 'c', 's', 'y', 'w'];
   const keys = Object.keys(D.syl);
   const initOf = k => k.startsWith('zh') || k.startsWith('ch') || k.startsWith('sh') ? k.slice(0, 2) : (/^[bpmfdtnlgkhjqxrzcsyw]/.test(k) ? k[0] : '');
-  view.innerHTML = `<h2>拼音表 Pinyin chart</h2><p class="small muted">Tap a syllable, then a tone. ${keys.length} syllables.</p><div class="card" id="toneRow"><span class="muted small">pick a syllable</span></div>
+  view.innerHTML = `${ph('拼音表', 'Pinyin chart')}<p class="small muted">Tap a syllable, then a tone. ${keys.length} syllables.</p><div class="card" id="toneRow"><span class="muted small">pick a syllable</span></div>
   ${IN.map(i => { const ks = keys.filter(k => initOf(k) === i); return ks.length ? `<h3>${i || '(no initial)'}</h3><div class="pyc">${ks.map(k => `<button data-k="${k}">${esc(k.replace('v', 'ü'))}</button>`).join('')}</div>` : ''; }).join('')}`;
   $$('[data-k]').forEach(b => b.onclick = () => {
     const k = b.dataset.k, cs = [...(D.syl[k] || '')];
@@ -2178,7 +2190,7 @@ V.settings = () => {
   const seg = (k, opts) => `<div class="seg" role="radiogroup" data-k="${k}">${opts.map(([v, l]) => `<button role="radio" aria-checked="${String(s[k]) === String(v)}" data-v="${v}">${l}</button>`).join('')}</div>`;
   const tog = (k, label, sub) => `<button class="set" role="switch" aria-checked="${!!s[k]}" data-tog="${k}"><span class="grow"><b>${label}</b>${sub ? `<span>${sub}</span>` : ''}</span><i class="tog"></i></button>`;
   const step = (k, label, sub, lo, hi, by) => `<div class="set"><span class="grow"><b>${label}</b><span>${sub}</span></span><div class="step" data-k="${k}" data-lo="${lo}" data-hi="${hi}" data-by="${by}"><button data-dir="-1" aria-label="fewer">−</button><output>${s[k]}</output><button data-dir="1" aria-label="more">+</button></div></div>`;
-  view.innerHTML = `<h2>设置 Settings</h2>
+  view.innerHTML = `${ph('设置', 'Settings')}
   <h3>学习 Study</h3><div class="group">
    ${step('newLimit', 'New items a day', 'New lessons stop at this number', 0, 100, 5)}
    ${step('goal', 'Daily review goal', 'Reach it with an empty queue to keep the streak', 10, 500, 10)}
@@ -2259,7 +2271,7 @@ V.help = () => {
     { id: 'store', t: 'Saving progress', d: 'Your progress is stored on this phone only.', fix: ['Export your progress now and then: Settings › Export progress.', 'On iPhone, sites not installed to the home screen can be cleared after a few weeks unused.'],
       run: async () => { if (!DB.idb) return ['warn', 'Using basic storage: export regularly']; const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false; return ['ok', kept ? 'Saved permanently on this phone' : 'Saved on this phone']; } }
   ];
-  view.innerHTML = `<h2>帮助 Help</h2><p class="hsum" id="hsum">Checking this phone…</p>
+  view.innerHTML = `${ph('帮助', 'Help')}<p class="hsum" id="hsum">Checking this phone…</p>
     <div class="checks">${checks.map(c => `<div class="chk" data-id="${c.id}"><div class="chk-top"><span class="chk-dot"></span><div class="grow"><b>${c.t}</b><span class="chk-d">${c.d}</span></div>${c.test ? `<button class="btn sm" data-test="${c.id}">${ic('play')} Test</button>` : ''}</div>
       <div class="chk-st">Checking…</div><details><summary>How to fix</summary><ul>${c.fix.map(f => `<li>${esc(f)}</li>`).join('')}</ul></details></div>`).join('')}</div>
     <h3>Credits</h3><p class="small muted">Recordings: <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO; voices Chen Wang and Yue Tan), CC BY-SA. Other audio: generated with a neural voice. Pinyin: <a href="https://github.com/zh-lx/pinyin-pro">pinyin-pro</a> (MIT). Strokes: Hanzi Writer and Make Me a Hanzi.</p>`;
