@@ -487,7 +487,7 @@ const DB = {
 };
 let CARDS = new Map();
 let META = null;
-const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false, native: true },
+const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false, native: true, deviceVoice: true },
   progress: { lessons: {}, units: {}, stages: {}, scen: {} }, stats: { days: {}, tone: {}, conf: {} }, weak: {}, streak: { n: 0, last: '' }, custom: [] });
 const S = () => META.settings;
 const save = () => DB.putMeta();
@@ -503,6 +503,7 @@ async function loadData() {
   D.syl = await fetch('data/syllables.json').then(r => r.json()).catch(() => ({}));
   D.audio = await fetch('data/audio.json').then(r => r.json()).catch(() => null);
   if (D.audio) { D.audioWords = new Set(D.audio.words); D.audioSyl = new Set(D.audio.syl); }
+  D.voice = await fetch('data/voice/index.json').then(r => r.json()).catch(() => null);
   D.sylSet = new Set(Object.keys(D.syl).map(k => Core.normBase(k.replace(/v/g, 'ü'))).concat(['er', 'm', 'n', 'ng', 'hm', 'yo', 'o', 'me', 'ne', 'ei', 'dei', 'zhei', 'nang', 'den', 'cen', 'chua', 'zhuai', 'shei']));
   units.filter(Boolean).forEach(addUnit);
   for (const it of META.custom || []) addItem(it);
@@ -615,15 +616,17 @@ if (TTS.ok) {
 const Native = {
   el: null,
   url(text, p) {
-    const a = D.audio; if (!a || !S().native) return null;
+    const key = String(text).trim();
+    const gen = () => { const h = D.voice && D.voice.files[key]; return h ? 'data/voice/' + h + '.mp3' : null; };
+    const a = D.audio; if (!a || !S().native) return gen();
     const hz = [...String(text)].filter(Core.isHan);
     if (hz.length === 1 && hz.join('') === String(text).trim()) {
       const pin = p || (D.dict.get(text) || {}).p || D.sylP.get(text) || (D.chars.get(text) || {}).p;
       const sy = pin && Core.parseSyl(String(pin).split(/[,，\s]/)[0]);
-      if (sy) { const k = Core.normBase(sy.base).replace(/ü/g, 'v') + sy.tone; if (D.audioSyl.has(k)) return a.base + 'syllabs/cmn-' + k + '.mp3'; if (sy.tone === 5) return null; }
+      if (sy) { const k = Core.normBase(sy.base).replace(/ü/g, 'v') + sy.tone; if (D.audioSyl.has(k)) return a.base + 'syllabs/cmn-' + k + '.mp3'; if (sy.tone === 5) return gen(); }
     }
-    if (D.audioWords.has(text)) return a.base + 'hsk/cmn-' + encodeURIComponent(text) + '.mp3';
-    return null;
+    if (D.audioWords.has(key)) return a.base + 'hsk/cmn-' + encodeURIComponent(key) + '.mp3';
+    return gen();
   },
   play(url, rate) {
     return new Promise(res => {
@@ -636,9 +639,13 @@ const Native = {
     });
   }
 };
+// Built-in audio only: native recording → generated clip → (a word with neither) its first example sentence.
+// The device voice is a last resort, used only for words you add yourself from the reader.
 async function say(t, r, p) {
-  const u = Native.url(t, p);
+  let u = Native.url(t, p);
+  if (!u) { const it = D.dict.get(String(t).trim()); if (it && it.ex && it.ex[0]) u = Native.url(it.ex[0].zh); }
   if (u) { if (TTS.ok) speechSynthesis.cancel(); if (await Native.play(u, r)) return; }
+  if (S().deviceVoice === false) return;
   return TTS.speak(t, r);
 }
 function listenRate(it) { const c = CARDS.get(it.id + '|listening'); const s = c && c.st === 2 ? c.s : 0; return s < 3 ? 0.6 : s < 21 ? S().rate : Math.min(1.25, S().rate + 0.25); }
@@ -1567,7 +1574,8 @@ V.settings = () => {
   <label class="row"><input type="checkbox" id="s_tc" ${s.toneColors ? 'checked' : ''}> tone colours</label></div>
   <div class="card"><label>Voice <select id="s_voice"><option value="">best available</option>${vs.map(v => `<option ${v.name === s.voice ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select></label>
   <label>Normal speed <input type="text" inputmode="decimal" id="s_rate" value="${s.rate}"></label>
-  <label class="row"><input type="checkbox" id="s_nat" ${s.native ? 'checked' : ''}> native-speaker recordings when available (else the synthetic voice)</label>
+  <label class="row"><input type="checkbox" id="s_nat" ${s.native ? 'checked' : ''}> human recordings for syllables and words</label>
+  <label class="row"><input type="checkbox" id="s_dev" ${s.deviceVoice !== false ? 'checked' : ''}> phone's own voice for words I add myself (no built-in audio)</label>
   <label>Speech recognition <select id="s_sr"><option value="auto">use when available</option><option value="off">off: always grade myself</option></select></label>
   <button class="btn" data-act="say" data-t="你好，我们开始学习吧。">▶ test voice</button></div>
   <div class="card"><label>Theme <select id="s_th"><option value="auto">system</option><option value="light">light</option><option value="dark">dark</option></select></label>
@@ -1580,7 +1588,7 @@ V.settings = () => {
   $('#s_save').onclick = () => {
     const num = (id, lo, hi, d) => { const v = parseFloat($(id).value); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
     Object.assign(s, { newLimit: num('#s_new', 0, 200, 15) | 0, goal: num('#s_goal', 1, 2000, 60) | 0, retention: num('#s_ret', 0.8, 0.97, 0.9), pinyin: $('#s_py').value, gloss: $('#s_gl').value, toneColors: $('#s_tc').checked,
-      voice: $('#s_voice').value, rate: num('#s_rate', 0.4, 1.6, 0.9), sr: $('#s_sr').value, native: $('#s_nat').checked, theme: $('#s_th').value, unlockAll: $('#s_ul').checked });
+      voice: $('#s_voice').value, rate: num('#s_rate', 0.4, 1.6, 0.9), sr: $('#s_sr').value, native: $('#s_nat').checked, deviceVoice: $('#s_dev').checked, theme: $('#s_th').value, unlockAll: $('#s_ul').checked });
     save(); applyTheme(); TTS.pick(); toast('Saved');
   };
   $('#imp').onchange = async e => {
@@ -1598,7 +1606,7 @@ V.help = () => {
   <p><b>Speech out</b>: ${TTS.ok ? '✓ available' : '✗ missing'}${TTS.voice ? ` · voice: ${esc(TTS.voice.name)} (${esc(TTS.voice.lang)})` : ' · no Chinese voice found yet'} · ${TTS.ok ? speechSynthesis.getVoices().length : 0} voices installed, ${TTS.ok ? speechSynthesis.getVoices().filter(v => /^zh|cmn/i.test(v.lang)).length : 0} Chinese. <button class="btn sm" data-act="say" data-t="你好，我们开始学习吧。">▶ test</button><br>No sound? iPhone: flip the ring/silent switch to ring and turn the volume up (speech follows the ringer). iPhone: Settings → Accessibility → Spoken Content → Voices → Chinese (China mainland) → download an "Enhanced" voice. Android: install Google Speech Services and the Chinese (Mandarin) voice data.</p>
   <p><b>Speech recognition</b>: ${SRClass ? '✓ available' : '✗ not in this browser: you will compare recordings and grade yourself'}. Works best in Chrome on Android. On iPhone it uses Siri dictation (turn on Siri & Dictation, add Chinese (Mainland) as a dictation language); it can be flaky inside a home-screen app, so if it fails, open the site in Safari or switch recognition off in settings.</p>
   <p><b>Microphone & pitch</b>: ${navigator.mediaDevices ? '✓' : '✗'} needs HTTPS (or localhost). The tone contour is measured from your voice and compared with tone templates (Chao 55/35/214/51). Speak each syllable clearly; whispering or a noisy room gives no pitch.</p>
-  <p><b>Native recordings</b>: ${D.audio ? `✓ ${D.audioSyl.size} tone syllables and ${D.audioWords.size} words` : '✗ not loaded'}. From <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO): syllables voiced by Chen Wang, words by Yue Tan (shtooka.net), licensed CC BY-SA. Sentences without a recording use the synthetic voice.</p>
+  <p><b>Native recordings</b>: ${D.audio ? `✓ ${D.audioSyl.size} tone syllables and ${D.audioWords.size} words` : '✗ not loaded'}. From <a href="https://github.com/hugolpz/audio-cmn">audio-cmn</a> (Hugo Lopez, INALCO): syllables voiced by Chen Wang, words by Yue Tan (shtooka.net), licensed CC BY-SA. Everything else (sentences, rhymes, poems, dialogues) is built-in audio generated once with a neural voice (${esc((D.voice || {}).voice || 'not loaded')}, ${D.voice ? Object.keys(D.voice.files).length : 0} clips) and shipped with the app.</p>
   <p><b>Speech grading</b>: what the recogniser hears is converted to pinyin (<a href="https://github.com/zh-lx/pinyin-pro">pinyin-pro</a>, MIT) and graded by sound and tone, so a same-sounding character counts as right and a wrong tone counts as a tone error.</p>
   <p><b>Handwriting</b>: ${HW_OK() ? '✓ Hanzi Writer loaded' : '✗ Hanzi Writer not loaded (offline on first run?)'}. Stroke data downloads per character and is cached for offline use.</p>
   <p><b>Storage</b>: ${DB.idb ? 'IndexedDB ✓' : 'localStorage fallback'}. iOS can clear site data for apps not opened in a few weeks unless installed to the home screen. Export your progress.</p></div>`;

@@ -12,7 +12,7 @@ Microphone and speech recognition need HTTPS. Push this folder to a GitHub repo,
 - Android (Chrome): ⋮ → Install app.
 
 ## Adding a unit
-Drop `data/sXuYY.json` (schema in ARCHITECTURE.md), add its filename to `data/index.json`, run `node tools/validate.cjs`.
+Drop `data/sXuYY.json` (schema in ARCHITECTURE.md), add its filename to `data/index.json`, run `node tools/validate.cjs`, then `python tools/make_audio.py` (needs `pip install edge-tts`) to generate its built-in audio.
 
 ## Browser limits and workarounds
 - iOS speech recognition: Safari exposes webkitSpeechRecognition through Siri dictation; it needs Siri & Dictation on with Chinese (Mainland) added, and it is flaky inside home-screen apps. When it fails or is missing the app records you (MediaRecorder), plays your voice next to the native audio and lets you grade yourself. Settings → Speech recognition → off forces this mode.
@@ -24,5 +24,6 @@ Drop `data/sXuYY.json` (schema in ARCHITECTURE.md), add its filename to `data/in
 
 ## Credits
 - Native recordings: [audio-cmn](https://github.com/hugolpz/audio-cmn) by Hugo Lopez (INALCO). Tone syllables voiced by Chen Wang, HSK words by Yue Tan (shtooka.net). CC BY-SA. Streamed from jsDelivr, pinned to commit f759a0f; `data/audio.json` lists which recordings exist.
+- Built-in audio for sentences, texts and dialogues: generated once with Microsoft's neural voice zh-CN-Xiaoxiao via edge-tts, stored in `data/voice/`.
 - Hanzi → pinyin for speech grading: [pinyin-pro](https://github.com/zh-lx/pinyin-pro) (MIT).
 - Stroke data: [Hanzi Writer](https://hanziwriter.org) and Make Me a Hanzi.
