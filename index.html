@@ -353,6 +353,71 @@ body.in-session{padding-bottom:48vh!important}
 .legend i{width:12px;height:12px;border-radius:4px}
 .legend b{font:800 15px var(--hz)}.legend span{color:var(--muted);line-height:1.3}
 body.in-session{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+
+/* ===== finish: shading, depth, materials ===== */
+.seal{background:linear-gradient(150deg,#E2503E,#A9231F);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 0 2px rgba(255,255,255,.14),0 3px 8px -3px rgba(140,20,20,.7)}
+.card,.group{border:1px solid var(--line2);background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--ink) 2.5%,var(--card)));box-shadow:inset 0 1px 0 var(--hi),0 1px 2px rgba(0,0,0,.04),0 12px 28px -16px var(--shade)}
+:root{--hi:rgba(255,255,255,.9);--shade:rgba(70,30,20,.28)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--hi:rgba(255,255,255,.05);--shade:rgba(0,0,0,.7)}}
+:root[data-theme=dark]{--hi:rgba(255,255,255,.05);--shade:rgba(0,0,0,.7)}
+.btn{background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--ink) 4%,var(--card)));box-shadow:inset 0 1px 0 var(--hi),0 4px 0 var(--line2),0 10px 16px -12px var(--shade)}
+.btn:active{box-shadow:inset 0 1px 0 var(--hi),0 1px 0 var(--line2)}
+.btn.pri,.grades .btn.sug{background:linear-gradient(180deg,#E04A3B 0%,#C1272D 55%,#B02227 100%);border-color:#B02227;box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -2px 0 rgba(0,0,0,.08),0 4px 0 var(--press),0 12px 20px -10px rgba(150,25,25,.65);text-shadow:0 1px 0 rgba(0,0,0,.18)}
+.btn.pri:hover,.btn.pri:active{background:linear-gradient(180deg,#E04A3B 0%,#C1272D 55%,#B02227 100%)}
+.btn.pri:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1px 0 var(--press)}
+.opt{background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--ink) 2.5%,var(--card)));box-shadow:inset 0 1px 0 var(--hi),0 4px 0 var(--line2),0 10px 16px -12px var(--shade)}
+.opt.ok{background:linear-gradient(180deg,color-mix(in srgb,var(--good) 8%,var(--card)),color-mix(in srgb,var(--good) 15%,var(--card)))}
+.opt.no{background:linear-gradient(180deg,color-mix(in srgb,var(--bad) 7%,var(--card)),color-mix(in srgb,var(--bad) 13%,var(--card)))}
+.bar{box-shadow:inset 0 2px 3px rgba(0,0,0,.08)}
+.bar i{background:linear-gradient(180deg,#E8584A,#C1272D);box-shadow:inset 0 3px 0 -1px rgba(255,255,255,.4)}
+nav{background:color-mix(in srgb,var(--card) 82%,transparent);box-shadow:inset 0 1px 0 var(--hi),0 14px 30px -14px rgba(0,0,0,.35)}
+/* Today scene */
+.gatewrap{filter:drop-shadow(0 18px 18px rgba(80,20,10,.18))}
+.hero3 .roof{filter:drop-shadow(0 6px 6px rgba(60,10,5,.25))}
+.gate .num{font:800 38px var(--ui);fill:var(--ink);letter-spacing:-.02em}
+.lnum{font:800 19px var(--ui);fill:#FFF6E2;stroke:#6E1210;stroke-width:3px;paint-order:stroke;stroke-linejoin:round}
+.lantern{width:62px}
+.lantern .flame{opacity:0}
+.lantern.lit .flame{opacity:.9;animation:flicker 2.6s ease-in-out infinite}
+.lantern.glow svg{filter:drop-shadow(0 6px 16px rgba(255,170,60,.75))}
+@keyframes flicker{0%,100%{opacity:.85}30%{opacity:1}55%{opacity:.7}75%{opacity:.95}}
+/* unit banner */
+.ubanner{background:radial-gradient(120% 100% at 8% 0%,#EC5F47 0,transparent 55%),linear-gradient(160deg,#CB3029,#9C211E);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 -8px 16px rgba(0,0,0,.14),0 6px 0 var(--press),0 18px 30px -16px rgba(140,20,20,.6)}
+.ubanner::after{content:attr(data-w);position:absolute;right:-12px;bottom:-56px;font:900 170px/1 var(--song);color:rgba(0,0,0,.13);pointer-events:none}
+.ubanner>*{position:relative;z-index:1}
+.ubanner .bar{box-shadow:inset 0 2px 3px rgba(0,0,0,.25)}
+.ubanner .bar i{background:linear-gradient(180deg,#FDE7A0,#E9B10A)}
+/* lesson path tiles */
+.node{position:relative;background:radial-gradient(circle at 34% 26%,#F07058 0,#C62F2A 52%,#951F1C 100%);box-shadow:inset 0 3px 0 rgba(255,255,255,.3),inset 0 -6px 10px rgba(0,0,0,.18),0 7px 0 #7A1714,0 16px 20px -8px rgba(100,15,10,.55)}
+.node:active{box-shadow:inset 0 3px 0 rgba(255,255,255,.3),0 2px 0 #7A1714}
+.node span{text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.node .ico{filter:drop-shadow(0 1px 0 rgba(0,0,0,.25))}
+.node.done{background:radial-gradient(circle at 34% 26%,#FFF0B8 0,#EDB511 50%,#B07B05 100%);color:#5C3B00;box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset 0 -6px 10px rgba(120,70,0,.25),0 7px 0 #8E6308,0 16px 20px -8px rgba(130,85,0,.5)}
+.node.done span,.node.done .ico{text-shadow:0 1px 0 rgba(255,255,255,.4);filter:none}
+.node.lock{background:radial-gradient(circle at 34% 26%,#FBFAF7 0,#DED9D1 58%,#C8C1B7 100%);box-shadow:inset 0 3px 0 rgba(255,255,255,.7),inset 0 -5px 8px rgba(0,0,0,.06),0 7px 0 #B3ABA0,0 14px 16px -10px rgba(0,0,0,.22)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .node.lock{background:radial-gradient(circle at 34% 26%,#4A4541 0,#33302D 58%,#262422 100%);box-shadow:inset 0 2px 0 rgba(255,255,255,.08),0 7px 0 #171615,0 14px 16px -10px rgba(0,0,0,.6)}}
+:root[data-theme=dark] .node.lock{background:radial-gradient(circle at 34% 26%,#4A4541 0,#33302D 58%,#262422 100%);box-shadow:inset 0 2px 0 rgba(255,255,255,.08),0 7px 0 #171615,0 14px 16px -10px rgba(0,0,0,.6)}
+.node.cur{outline:0;animation:none}
+.node.cur::before{content:"";position:absolute;inset:-13px;border-radius:50%;background:conic-gradient(from 0deg,#FDE7A0,#E9B10A 22%,transparent 23% 27%,#E9B10A 28% 47%,transparent 48% 52%,#E9B10A 53% 72%,transparent 73% 77%,#E9B10A 78% 97%,transparent 98%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));animation:spin 9s linear infinite;filter:drop-shadow(0 0 6px rgba(233,177,10,.6))}
+@keyframes spin{to{rotate:360deg}}
+.gatenode{background:radial-gradient(circle,#F5CD52 0 2.6px,#8A5E04 2.8px 3.4px,transparent 3.6px) 7px 9px/16px 15px,linear-gradient(180deg,#5A3427,#26140F);color:#F5CD52;box-shadow:inset 0 0 0 3px #B88407,inset 0 2px 0 4px rgba(255,255,255,.12),0 7px 0 #0E0806,0 16px 20px -8px rgba(0,0,0,.55);text-shadow:0 2px 0 #000}
+.gatenode span{display:grid;place-items:center;width:52px;height:52px;margin-top:6px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5A3427,#26140F);box-shadow:0 0 0 2.5px #B88407,0 0 0 5px #26140F,inset 0 2px 0 rgba(255,255,255,.12)}
+.start{box-shadow:0 6px 14px -8px var(--shade)}
+/* text cards */
+.hcard{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--card),color-mix(in srgb,var(--seal) 5%,var(--card)));box-shadow:inset 0 1px 0 var(--hi),0 12px 24px -16px var(--shade)}
+.hcard::after{content:attr(data-w);position:absolute;right:-8px;bottom:-30px;font:900 110px/1 var(--song);color:color-mix(in srgb,var(--seal) 10%,transparent);pointer-events:none}
+.hcard>*{position:relative;z-index:1}
+/* feedback sheet + completion */
+.sheetfb.ok{background:linear-gradient(180deg,color-mix(in srgb,var(--good) 16%,var(--card)),color-mix(in srgb,var(--good) 8%,var(--card)))}
+.sheetfb.no{background:linear-gradient(180deg,color-mix(in srgb,var(--bad) 14%,var(--card)),color-mix(in srgb,var(--bad) 6%,var(--card)))}
+.fbh .ico{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 10px -3px currentColor}
+.sheetfb.ok .fbh .ico{background:linear-gradient(180deg,#4FAE7E,#2E7D5B);color:#fff}
+.sheetfb.no .fbh .ico{background:linear-gradient(180deg,#E25A4A,#B02227);color:#fff}
+.sheetfb.ok .btn.pri{background:linear-gradient(180deg,#45A273,#2E7D5B);border-color:#2A7253;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 0 #1E5A40,0 12px 20px -10px rgba(30,90,60,.6)}
+.combo{background:linear-gradient(180deg,#FDE7A0,#E9B10A);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px -3px rgba(170,120,0,.7)}
+.stamp{filter:drop-shadow(0 10px 14px rgba(140,20,20,.35))}
+.tilex{background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--ink) 2.5%,var(--card)));box-shadow:inset 0 1px 0 var(--hi),0 12px 22px -16px var(--shade);border:1px solid var(--line2)}
+.tilex .ico{width:36px;height:36px;padding:8px;border-radius:50%;background:color-mix(in srgb,var(--seal) 12%,var(--card));margin-bottom:4px}
 @media (prefers-reduced-motion:no-preference){.rv{opacity:0;transform:translateY(30px);transition:opacity .8s ease,transform .8s ease}.rv.in{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
@@ -1213,26 +1278,59 @@ function chooseKind(c, it, mode) {
 
 
 // ---------------- crafted elements ----------------
-const ROOF_SVG = `<svg class="roof" viewBox="0 0 340 74" aria-hidden="true"><path d="M86 19h168" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><path d="M86 19c-6-9-14-10-18-4M254 19c6-9 14-10 18-4" stroke="var(--ink)" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M92 20h156c16 18 44 30 84 33l-6 6H14l-6-6c40-3 68-15 84-33z" fill="var(--seal)"/><path d="M84 30h172M70 40h200M46 50h248" stroke="color-mix(in srgb,#000 22%,var(--seal))" stroke-width="1.5"/><rect x="40" y="58" width="260" height="5" fill="var(--gold)"/><rect x="40" y="63" width="260" height="9" fill="var(--seal)"/><path d="M60 63v9M110 63v9M170 63v9M230 63v9M280 63v9" stroke="var(--gold)" stroke-width="2"/></svg>`;
+const ROOF_SVG = `<svg class="roof" viewBox="0 0 340 90" aria-hidden="true"><defs><linearGradient id="rfG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8603F"/><stop offset=".5" stop-color="#C62F2A"/><stop offset="1" stop-color="#8E1C1A"/></linearGradient><linearGradient id="rfShine" x1="0" y1="0" x2="1" y2="0"><stop offset=".25" stop-color="#fff" stop-opacity="0"/><stop offset=".42" stop-color="#fff" stop-opacity=".2"/><stop offset=".58" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="rgG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6A3C2E"/><stop offset="1" stop-color="#2A1611"/></linearGradient><linearGradient id="gdG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDE7A0"/><stop offset=".5" stop-color="#E9B10A"/><stop offset="1" stop-color="#A97505"/></linearGradient><linearGradient id="tlG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#349A99"/><stop offset="1" stop-color="#155156"/></linearGradient><linearGradient id="evS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient><linearGradient id="bmG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B92D27"/><stop offset="1" stop-color="#7F1A18"/></linearGradient><clipPath id="rfC"><path d="M96 24h148c16 20 46 32 88 35l-7 7H13l-7-7c42-3 72-15 88-35z"/></clipPath><pattern id="tiles" width="8" height="50" patternUnits="userSpaceOnUse"><path d="M1 0v50" stroke="#4A0E0C" stroke-opacity=".4" stroke-width="2.2"/><path d="M4.6 0v50" stroke="#fff" stroke-opacity=".16" stroke-width="1.3"/></pattern><pattern id="caihua" width="26" height="11" patternUnits="userSpaceOnUse"><path d="M2 5.5L8 1.6 14 5.5 8 9.4z" fill="#F5CD52" stroke="#7A5304" stroke-width=".5"/><circle cx="20" cy="5.5" r="2.4" fill="#F9E4A6"/><circle cx="20" cy="5.5" r="1" fill="#155156"/></pattern><path id="chw" d="M93 25c-12 1-20-6-18-15 1-6 8-9 12-4-4 0-6 4-3 7 2 2 6 2 9 1z"/></defs><path d="M96 24h148c16 20 46 32 88 35l-7 7H13l-7-7c42-3 72-15 88-35z" fill="url(#rfG)"/><g clip-path="url(#rfC)"><rect x="0" y="18" width="340" height="52" fill="url(#tiles)"/><path d="M70 42h200M40 52h260" stroke="#4A0E0C" stroke-opacity=".28" stroke-width="1.4"/><rect x="0" y="18" width="340" height="52" fill="url(#rfShine)"/></g><g fill="url(#gdG)" stroke="#7A5304" stroke-width=".6"><circle cx="18.0" cy="63.5" r="3.1"/><circle cx="29.2" cy="63.5" r="3.1"/><circle cx="40.4" cy="63.5" r="3.1"/><circle cx="51.6" cy="63.5" r="3.1"/><circle cx="62.8" cy="63.5" r="3.1"/><circle cx="74.0" cy="63.5" r="3.1"/><circle cx="85.2" cy="63.5" r="3.1"/><circle cx="96.4" cy="63.5" r="3.1"/><circle cx="107.6" cy="63.5" r="3.1"/><circle cx="118.8" cy="63.5" r="3.1"/><circle cx="130.0" cy="63.5" r="3.1"/><circle cx="141.2" cy="63.5" r="3.1"/><circle cx="152.4" cy="63.5" r="3.1"/><circle cx="163.6" cy="63.5" r="3.1"/><circle cx="174.8" cy="63.5" r="3.1"/><circle cx="186.0" cy="63.5" r="3.1"/><circle cx="197.2" cy="63.5" r="3.1"/><circle cx="208.4" cy="63.5" r="3.1"/><circle cx="219.6" cy="63.5" r="3.1"/><circle cx="230.8" cy="63.5" r="3.1"/><circle cx="242.0" cy="63.5" r="3.1"/><circle cx="253.2" cy="63.5" r="3.1"/><circle cx="264.4" cy="63.5" r="3.1"/><circle cx="275.6" cy="63.5" r="3.1"/><circle cx="286.8" cy="63.5" r="3.1"/><circle cx="298.0" cy="63.5" r="3.1"/><circle cx="309.2" cy="63.5" r="3.1"/><circle cx="320.4" cy="63.5" r="3.1"/></g><rect x="13" y="66" width="314" height="8" fill="url(#evS)"/><rect x="34" y="68" width="272" height="11" fill="url(#tlG)"/><rect x="34" y="68" width="272" height="11" fill="url(#caihua)"/><path d="M34 68.7h272M34 78.3h272" stroke="#E9B10A" stroke-width="1.4"/><rect x="30" y="79" width="280" height="10" fill="url(#bmG)"/><path d="M30 79.7h280" stroke="#fff" stroke-opacity=".22"/><rect x="90" y="15" width="160" height="10" rx="3" fill="url(#rgG)"/><path d="M94 16.6h152" stroke="#fff" stroke-opacity=".2" stroke-width="1.2"/><use href="#chw" fill="url(#rgG)"/><use href="#chw" fill="url(#rgG)" transform="matrix(-1 0 0 1 340 0)"/><circle cx="84" cy="11.5" r="1.5" fill="#F2C230"/><circle cx="256" cy="11.5" r="1.5" fill="#F2C230"/></svg>`;
 // 月亮门: a palace wall with a round moon gate; the gold ring around the opening is today's review goal
 function gateSVG(pct, done, goal) {
-  const r = 86, C = 2 * Math.PI * r, off = C * (1 - Math.min(1, pct / 100));
-  return `<svg class="gate" viewBox="0 0 260 214" role="img" aria-label="Daily goal: ${done} of ${goal} reviews">
-    <defs><clipPath id="gateIn"><circle cx="130" cy="110" r="80"/></clipPath>
-    <pattern id="lattice" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 9h18M9 0v18M0 0l18 18" stroke="var(--line2)" stroke-width="1.2" fill="none"/></pattern></defs>
-    <rect x="14" y="0" width="232" height="214" fill="var(--seal)"/>
-    <path d="M14 36h232M14 76h232M14 116h232M14 156h232M14 196h232M70 0v36M190 0v36M40 36v40M220 36v40M70 76v40M190 76v40M40 116v40M220 116v40M70 156v40M190 156v40" stroke="rgba(0,0,0,.13)" stroke-width="1.4"/>
-    <circle cx="130" cy="110" r="94" fill="var(--paper)"/>
-    <rect x="40" y="20" width="180" height="180" fill="url(#lattice)" clip-path="url(#gateIn)" opacity=".8"/>
-    <circle cx="130" cy="110" r="${r}" fill="none" stroke="color-mix(in srgb,#000 22%,var(--seal))" stroke-width="9"/>
-    <circle class="ring" cx="130" cy="110" r="${r}" fill="none" stroke="var(--gold)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 130 110)" style="--c:${C.toFixed(1)}"/>
-    <rect x="86" y="80" width="88" height="62" rx="16" fill="var(--paper)" opacity=".86"/>
-    <text class="num" x="130" y="110" text-anchor="middle" dominant-baseline="central">${done}</text>
-    <text class="lab" x="130" y="136" text-anchor="middle">of ${goal} reviews</text></svg>`;
+  const r = 90, C = 2 * Math.PI * r, off = C * (1 - Math.min(1, pct / 100));
+  const bricks = [26, 52, 78, 104, 130, 156, 182].map((y, i) => `<path d="M14 ${y}h232" />` + [0, 1, 2, 3, 4].map(k => `<path d="M${(i % 2 ? 37 : 60) + k * 46} ${y - 26}v26"/>`).join('')).join('');
+  return `<svg class="gate" viewBox="0 0 260 228" role="img" aria-label="Daily goal: ${done} of ${goal} reviews"><defs>
+    <linearGradient id="wlG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A9271F"/><stop offset=".25" stop-color="#C2342B"/><stop offset="1" stop-color="#B12D25"/></linearGradient>
+    <radialGradient id="wlV" cx=".5" cy=".46" r=".78"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></radialGradient>
+    <filter id="plaster" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .2  0 0 0 0 .03  0 0 0 0 .02  0 0 0 .9 -.32"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+    <linearGradient id="stnG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBF8F2"/><stop offset=".45" stop-color="#E3DDD2"/><stop offset="1" stop-color="#A69C8E"/></linearGradient>
+    <linearGradient id="stnB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDE8DF"/><stop offset="1" stop-color="#B3AA9C"/></linearGradient>
+    <radialGradient id="inS" cx=".5" cy=".5" r=".5"><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient>
+    <linearGradient id="inSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--card)"/><stop offset="1" style="stop-color:var(--paper)"/></linearGradient>
+    <linearGradient id="rgld" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE7A0"/><stop offset=".5" stop-color="#E9B10A"/><stop offset="1" stop-color="#B98206"/></linearGradient>
+    <linearGradient id="wTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+    <filter id="glow" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="plq" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#3A1A10" flood-opacity=".28"/></filter>
+    <clipPath id="gateIn"><circle cx="130" cy="106" r="82"/></clipPath>
+    <pattern id="lattice" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 10h20M10 0v20M3 3l14 14M17 3L3 17" stroke="var(--line2)" stroke-width="1.1" fill="none"/></pattern></defs>
+    <rect x="14" y="0" width="232" height="206" fill="url(#wlG)"/>
+    <rect x="14" y="0" width="232" height="206" fill="#C2342B" filter="url(#plaster)"/>
+    <g stroke="#5A0F0C" stroke-opacity=".22" stroke-width="1.2">${bricks}</g>
+    <rect x="14" y="0" width="232" height="206" fill="url(#wlV)"/>
+    <rect x="14" y="0" width="232" height="16" fill="url(#wTop)"/>
+    <rect x="6" y="200" width="248" height="28" rx="2" fill="url(#stnB)"/><path d="M6 200.8h248" stroke="#fff" stroke-opacity=".8"/><path d="M6 213h248" stroke="#000" stroke-opacity=".12"/>
+    <circle cx="130" cy="106" r="99" fill="#000" opacity=".18"/>
+    <circle cx="130" cy="106" r="97" fill="url(#stnG)"/>
+    <circle cx="130" cy="106" r="82" fill="url(#inSky)"/>
+    <rect x="40" y="16" width="180" height="180" fill="url(#lattice)" clip-path="url(#gateIn)"/>
+    <circle cx="130" cy="106" r="82" fill="url(#inS)"/>
+    <circle cx="130" cy="106" r="${r}" fill="none" stroke="#000" stroke-opacity=".16" stroke-width="7"/>
+    <circle class="ring" cx="130" cy="106" r="${r}" fill="none" stroke="url(#rgld)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 130 106)" style="--c:${C.toFixed(1)}" filter="url(#glow)"/>
+    <rect x="82" y="74" width="96" height="66" rx="18" style="fill:var(--card)" filter="url(#plq)"/>
+    <rect x="82.5" y="74.5" width="95" height="65" rx="17.5" fill="none" stroke="#fff" stroke-opacity=".6"/>
+    <text class="num" x="130" y="97" text-anchor="middle" dominant-baseline="central">${done}</text>
+    <text class="lab" x="130" y="130" text-anchor="middle">of ${goal} reviews</text></svg>`;
 }
 // 灯笼: the streak lantern sways while the streak is alive and glows once today's goal is met
 function lanternHTML(n, live, today) {
-  return `<div class="lantern${live ? ' lit' : ''}${today ? ' glow' : ''}" role="img" aria-label="Streak: ${n} day${n === 1 ? '' : 's'}"><svg viewBox="0 0 60 96" aria-hidden="true"><path d="M30 0v15" stroke="var(--ink)" stroke-width="1.6"/><rect x="19" y="14" width="22" height="8" rx="2.5" fill="var(--gold)"/><ellipse cx="30" cy="47" rx="27" ry="26" fill="var(--seal)"/><path d="M30 21c-11 6-11 46 0 52M30 21c11 6 11 46 0 52M30 21c-22 8-22 44 0 52M30 21c22 8 22 44 0 52" fill="none" stroke="rgba(0,0,0,.2)" stroke-width="1.3"/><ellipse cx="22" cy="36" rx="6" ry="9" fill="rgba(255,255,255,.18)"/><rect x="19" y="71" width="22" height="8" rx="2.5" fill="var(--gold)"/><path d="M25 79v15M30 79v17M35 79v15" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round"/></svg><b>${n}</b></div>`;
+  return `<div class="lantern${live ? ' lit' : ''}${today ? ' glow' : ''}" role="img" aria-label="Streak: ${n} day${n === 1 ? '' : 's'}"><svg viewBox="0 0 64 106" aria-hidden="true"><defs>
+    <radialGradient id="lnB" cx=".36" cy=".34" r=".78"><stop offset="0" stop-color="#FF8466"/><stop offset=".42" stop-color="#D9372A"/><stop offset="1" stop-color="#6E1210"/></radialGradient>
+    <radialGradient id="lnGlow" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#FFEDB0" stop-opacity=".95"/><stop offset=".6" stop-color="#FFB347" stop-opacity=".35"/><stop offset="1" stop-color="#FF8A3D" stop-opacity="0"/></radialGradient>
+    <linearGradient id="lnGd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9A6A04"/><stop offset=".32" stop-color="#FDE7A0"/><stop offset=".62" stop-color="#E9B10A"/><stop offset="1" stop-color="#8A5E04"/></linearGradient>
+    <linearGradient id="lnT" gradientUnits="userSpaceOnUse" x1="0" y1="85" x2="0" y2="106"><stop offset="0" stop-color="#E9B10A"/><stop offset="1" stop-color="#C62F2A"/></linearGradient></defs>
+    <path d="M32 0v16" stroke="#3B2A22" stroke-width="1.6"/>
+    <rect x="19" y="15" width="26" height="10" rx="3.5" fill="url(#lnGd)"/><path d="M21 17h22" stroke="#fff" stroke-opacity=".5"/>
+    <ellipse cx="32" cy="51" rx="29.5" ry="27.5" fill="url(#lnB)"/>
+    <ellipse class="flame" cx="32" cy="54" rx="21" ry="19" fill="url(#lnGlow)"/>
+    <path d="M32 24c-12 7-12 47 0 54M32 24c12 7 12 47 0 54M32 24c-23 8-23 46 0 54M32 24c23 8 23 46 0 54" fill="none" stroke="#4A0B09" stroke-opacity=".45" stroke-width="1.2"/>
+    <ellipse cx="21" cy="40" rx="5.5" ry="11" fill="#fff" opacity=".24" transform="rotate(-16 21 40)"/>
+    <rect x="19" y="76" width="26" height="10" rx="3.5" fill="url(#lnGd)"/><path d="M21 78h22" stroke="#fff" stroke-opacity=".45"/>
+    <path d="M26 86v15M32 86v19M38 86v15" stroke="url(#lnT)" stroke-width="2.3" stroke-linecap="round"/>
+    <text x="32" y="52" text-anchor="middle" dominant-baseline="central" class="lnum">${n}</text></svg></div>`;
 }
 // short chime: two rising notes when right, one low note when wrong
 let AC = null;
@@ -1716,7 +1814,7 @@ V.today = () => {
   view.innerHTML = `<section class="hero3">${ROOF_SVG}<div class="gatewrap">${gateSVG(goalPct, st.rev, S().goal)}${lanternHTML(live ? sk.n : 0, live, sk.last === dayKey())}</div>
     <div class="next">${nl ? `<span class="kick">第${nu.n}单元 ${esc(nu.title)}</span><b class="hz">${esc(nl.title)}</b>` : '<b>今天的课都学完了</b>'}</div>${cta}
     <p class="note-s">${due.length ? `${['reading', 'writing', 'listening', 'speaking', 'drill'].filter(k => by[k]).map(k => `${SK_ZH[k]} ${by[k]}`).join('  ')}. Reviews come before new lessons.` : `${st.new} new today, limit ${S().newLimit}. The streak lantern lights once the goal is met with nothing due.`}</p></section>
-  ${reads.length ? `<h3>读一读 Read</h3><div class="hscroll">${reads.map(t => `<a class="hcard" href="#text/${t.id}"><span>${kinds[t.kind] || t.kind}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
+  ${reads.length ? `<h3>读一读 Read</h3><div class="hscroll">${reads.map(t => `<a class="hcard" data-w="${esc([...t.title].find(Core.isHan) || '')}" href="#text/${t.id}"><span>${kinds[t.kind] || t.kind}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
   <div class="grid2"><button class="btn" data-act="weak">弱项 Weak (${weakN})</button><button class="btn" data-act="cramsel">突击 Cram</button></div>
   <h3>Next 7 days</h3>${forecastHTML(7)}`;
 };
@@ -1747,11 +1845,11 @@ V.unit = id => {
     return `<div class="stop" style="--x:${Math.round(Math.sin(i * 1.05) * 64)}px">${st === 'cur' ? '<span class="start">开始</span>' : ''}<button class="node ${st}" data-act="${st === 'lock' ? '' : 'lesson'}" data-id="${l.id}" aria-label="${esc(l.title)}, ${kind[l.type] || ''}${st === 'done' ? ', done' : st === 'lock' ? ', locked' : ''}">${st === 'lock' ? ic('lock') : st === 'done' ? ic('check') : `<span>${glyph(l)}</span>`}</button><small>${esc(l.title)}</small></div>`;
   }).join('');
   const sc = META.progress.units[u.id];
-  view.innerHTML = `<div class="ubanner"><span>第${u.stage}阶段 · 第${u.n}单元</span><h2 class="hz">${esc(u.title)}</h2><p>${esc(u.en)}</p><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><small>${done} of ${u.lessons.length} lessons</small></div>
+  view.innerHTML = `<div class="ubanner" data-w="${esc([...u.title].find(Core.isHan) || '')}"><span>第${u.stage}阶段 · 第${u.n}单元</span><h2 class="hz">${esc(u.title)}</h2><p>${esc(u.en)}</p><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><small>${done} of ${u.lessons.length} lessons</small></div>
   <details class="uintro"><summary>About this unit</summary><p class="small">${esc(u.intro || '')}</p></details>
   <div class="path">${stops}<div class="stop" style="--x:0px"><button class="node gatenode${sc >= 85 ? ' done' : ''}" data-act="${ok ? 'check' : ''}" data-id="${u.id}" aria-label="Checkpoint, 85% to pass"><span>考</span></button><small>检测 Checkpoint${sc != null ? `<br>best ${sc}%` : ''}</small></div></div>
   <button class="btn block" data-act="cram" data-id="${u.id}">突击 Cram this unit</button>
-  ${(u.texts || []).length ? `<h3>Texts</h3><div class="hscroll">${u.texts.map(t => `<a class="hcard" href="#text/${t.id}"><span>${esc(t.kind)}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
+  ${(u.texts || []).length ? `<h3>Texts</h3><div class="hscroll">${u.texts.map(t => `<a class="hcard" data-w="${esc([...t.title].find(Core.isHan) || '')}" href="#text/${t.id}"><span>${esc(t.kind)}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
   ${u.scenario ? `<h3>Role-play</h3><div class="list"><a href="#scen/${u.scenario.id}">${ic('chat')}<span class="grow hz">${esc(u.scenario.title)}</span>${ic('chev')}</a></div>` : ''}`;
 };
 V.library = () => {
