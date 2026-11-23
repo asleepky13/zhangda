@@ -153,5 +153,12 @@ console.log(`core: ${n} test groups passed`);
   // half-third: low falling 3rd tone before another tone; only distinguishable from T4/T1 with a baseline
   let hh = 0; for (let r = 0; r < 25; r++) { const track = [...syl(x => -3 - 3 * x, 0, 0.3), ...syl(x => 4, 0.5, 0.3)]; if (C.classifyTone(C.pitchSegments(track, 2)[0], { base: st(B) }).tone === 3) hh++; }
   report.push(`T3 half-third +base: ${hh}/25`); assert.ok(hh >= 22, 'half-third ' + hh);
+  // Taiwan accent: T2 dips low and late, T3 is a low fall; standard shapes must still work in tw mode
+  const TW = { 'TW T2 dip-rise': [2, x => x < 0.5 ? -1 - 4 * x : -3 + 6 * (x - 0.5)], 'TW T2 deep': [2, x => x < 0.45 ? -1.5 - 5 * x : -3.75 + 7 * (x - 0.45)], 'TW T3 low fall': [3, x => -2.5 - 4 * x],
+    'TW T2 plain': [2, x => -1.5 + 7 * x], 'TW T3 full 214': [3, x => x < 0.55 ? -2 - 7 * x : -5.9 + 11 * (x - 0.55)], 'TW T4': [4, x => 5 - 11 * x], 'TW T1': [1, x => 4.2 - 0.6 * x] };
+  for (const [name, [want, f]] of Object.entries(TW)) {
+    let hit = 0; for (let r = 0; r < 25; r++) { const track = [...syl(f, 0, 0.36), ...syl(() => 0.5, 0.55, 0.3)]; const r0 = C.classifyTone(C.pitchSegments(track, 2)[0], { base: st(B), tw: true }); if (r0.tone === want || (want === 3 && r0.dip)) hit++; }
+    report.push(`${name} +base: ${hit}/25`); assert.ok(hit >= 22, `${name}: only ${hit}/25`);
+  }
   console.log('tone variants:\n  ' + report.join('\n  '));
 }

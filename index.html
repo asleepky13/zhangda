@@ -744,6 +744,7 @@ const Core = (() => {
   }
   // Tone templates in Chao numbers (1 low … 5 high). 6 = half-third (21), the 3rd tone before another tone.
   const TPL = { 1: [[0, 4.6], [1, 4.5]], 2: [[0, 3], [0.3, 2.7], [1, 5]], 3: [[0, 2.4], [0.6, 1], [1, 3.6]], 6: [[0, 2.4], [1, 1]], 4: [[0, 5], [1, 1.4]] };
+  const TPL_TW2 = [[0, 3], [0.5, 1.9], [1, 4.2]];
   const tplAt = (pts, t) => { for (let i = 1; i < pts.length; i++) if (t <= pts[i][0]) { const [t0, a] = pts[i - 1], [t1, b] = pts[i]; return a + (b - a) * (t - t0) / (t1 - t0 || 1); } return pts[pts.length - 1][1]; };
   // Fit each template to the contour (best pitch shift and range scale). With a speaker baseline (semitones of
   // the speaker's mid pitch) register counts: a low flat syllable reads as a half-third, a high one as tone 1.
@@ -758,7 +759,7 @@ const Core = (() => {
     const hasBase = opts.base != null && seg.ref != null;
     const off = hasBase ? seg.ref - opts.base : 0, maxShift = hasBase ? 2 : 6;
     const dist = {};
-    for (const [tn, pts] of Object.entries(TPL)) {
+    for (const [tn, pts] of Object.entries(opts.tw ? { ...TPL, tw2: TPL_TW2 } : TPL)) {
       let best = Infinity;
       for (const sc of [0.55, 0.75, 1, 1.3]) {
         const tv = v.map((_, k) => (tplAt(pts, k / (K - 1)) - 3) * 2.4 * sc);
@@ -771,9 +772,11 @@ const Core = (() => {
       dist[tn] = best;
     }
     if (seg.gap > 0.05) { dist[3] *= 0.6; dist[6] *= 0.6; } // a creaky voice break mid-syllable is a classic 3rd tone
+    // Taiwan: a dip that rises again is a 2nd tone far more often than a full 214 3rd (TW 3rd is mostly 21); dip flags the ambiguity
+    let dip = false; if (opts.tw) { dip = dist.tw2 < dist[2]; dist[2] = Math.min(dist[2], dist.tw2); dist[3] *= 5; }
     const d3 = Math.min(dist[3], dist[6]);
     const rank = [[1, dist[1]], [2, dist[2]], [3, d3], [4, dist[4]]].sort((x, y) => x[1] - y[1]);
-    return { tone: rank[0][0], half: dist[6] < dist[3], conf: (rank[1][1] - rank[0][1]) / (rank[1][1] + rank[0][1] + 0.01), dist };
+    return { tone: rank[0][0], dip, half: dist[6] < dist[3], conf: (rank[1][1] - rank[0][1]) / (rank[1][1] + rank[0][1] + 0.01), dist };
   }
   const CHAO = { 1: [5, 5], 2: [3, 5], 3: [2, 1, 4], 4: [5, 1], h: [2, 1, 1] };
   const NEUTRAL_AFTER = { 1: 2, 2: 3, 3: 4, 4: 1, 5: 2 };
@@ -842,7 +845,7 @@ const DB = {
 };
 let CARDS = new Map();
 let META = null;
-const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', unlockAll: false, native: true, deviceVoice: true, voiceSrc: 'builtin', sfx: true },
+const defaultMeta = () => ({ v: 1, settings: { newLimit: 15, goal: 60, retention: 0.9, pinyin: 'auto', gloss: 'auto', toneColors: true, voice: '', rate: 0.9, theme: 'auto', sr: 'auto', accent: 'cn', unlockAll: false, native: true, deviceVoice: true, voiceSrc: 'builtin', sfx: true },
   progress: { lessons: {}, units: {}, stages: {}, scen: {} }, stats: { days: {}, tone: {}, conf: {} }, weak: {}, streak: { n: 0, last: '' }, custom: [] });
 const S = () => META.settings;
 const save = () => DB.putMeta();
@@ -1059,7 +1062,7 @@ function heardSyls(text) {
 }
 function recognize() {
   if (!SRClass || S().sr === 'off') return null;
-  const r = new SRClass(); r.lang = 'zh-CN'; r.interimResults = true; r.maxAlternatives = 5; r.continuous = false;
+  const r = new SRClass(); r.lang = S().accent === 'tw' ? 'zh-TW' : 'zh-CN'; r.interimResults = true; r.maxAlternatives = 5; r.continuous = false;
   let done; const p = new Promise((res, rej) => {
     const alts = []; let interim = '';
     r.onresult = e => { for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) for (const a of x) alts.push(a.transcript); else interim = x[0].transcript; } };
@@ -1130,9 +1133,9 @@ function speakPanel(host, target, cb) {
     const base = V.n >= 3 ? V.base : undefined;
     if (segs.length >= 2 && segs[0].ref) { V.base = V.n ? V.base * 0.8 + segs[0].ref * 0.2 : segs[0].ref; V.n++; }
     const tones = ts.map((s, i) => {
-      const seg = segs[i]; const c = seg ? Core.classifyTone(seg, { base }) : { tone: 0, conf: 0 }; const got = c.tone; if (seg) seg.got = got;
+      const seg = segs[i]; const c = seg ? Core.classifyTone(seg, { base, tw: S().accent === 'tw' }) : { tone: 0, conf: 0 }; const got = c.tone; if (seg) seg.got = got;
       const exp = s.sp;
-      const accept = exp === 5 ? [1, 2, 3, 4, 5] : s.tone === 3 && exp === 2 ? [2, 3] : [exp]; // 3+3 sandhi: either is fine
+      const accept = exp === 5 ? [1, 2, 3, 4, 5] : s.tone === 3 && exp === 2 ? [2, 3] : exp === 3 && c.dip ? [3, 2] : [exp]; // 3+3 sandhi: either is fine; a dip-rise is a fine 3rd tone too
       // confident and wrong = wrong; unsure or a near miss = close (not counted against you)
       const verdict = !got ? null : accept.includes(got) ? 'ok' : c.conf >= 0.3 ? 'wrong' : 'close';
       return { exp, got, conf: c.conf, verdict, ok: verdict === null ? null : verdict !== 'wrong', base: s.base };
@@ -2139,6 +2142,7 @@ V.settings = () => {
    <div class="set col"><b>Normal speed</b>${seg('rate', [[0.7, '0.7×'], [0.8, '0.8×'], [0.9, '0.9×'], [1, '1×'], [1.1, '1.1×']])}</div>
    ${tog('sfx', 'Sound effects', 'A short chime for right and wrong answers')}
    ${tog('native', 'Human recordings', 'Native speakers for syllables and words, when using the built-in voice')}
+   <div class="set col"><b>Your accent</b><span>Taiwan: listens with the Taiwan recogniser and accepts the Taiwanese 2nd and 3rd tone shapes</span>${seg('accent', [['cn', '大陆 Mainland'], ['tw', '台湾 Taiwan']])}</div>
    <div class="set col"><b>Speech recognition</b><span>Off: you compare your recording with the model and grade yourself</span>${seg('sr', [['auto', 'On'], ['off', 'Off']])}</div>
    <button class="set" data-act="say" data-t="你好，我们开始学习吧。">${ic('play')}<span class="grow"><b>Test the voice</b><span>你好，我们开始学习吧。</span></span></button>
   </div>
