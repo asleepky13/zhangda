@@ -193,6 +193,45 @@ textarea{min-height:120px}
 .rstop:has(.rnode.lock) .rlabel{opacity:.5}
 .rlabel .go{display:inline-block;margin-top:4px;padding:4px 11px;border-radius:999px;background:var(--seal);color:#FFF8F2;font:700 11.5px var(--ui)}
 
+
+/* exercises: a copybook page */
+.prog .btn.ic{min-width:34px;padding:0;border:0;background:none;color:var(--muted)}
+.prog .btn.ic .ico{width:20px;height:20px}
+#ex > p.muted.center{margin:22px 0 6px;font:600 12.5px/1.5 var(--ui);letter-spacing:.06em;color:var(--muted)}
+.qprompt{margin:6px 0 4px;font:700 26px/1.3 var(--song);letter-spacing:.01em}
+#ex .big{margin:18px 0 10px;font:600 64px/1.3 var(--song)}
+#ex .big.md{font-size:46px}
+#ex .big ruby{display:inline-flex;flex-direction:column-reverse;align-items:center;vertical-align:bottom;margin:0 .06em;padding:0 .08em;line-height:1.16;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='.5' y='.5' width='39' height='39' fill='none' stroke='%23C23B22' stroke-opacity='.32'/%3E%3Cpath d='M20 0v40M0 20h40' stroke='%23C23B22' stroke-opacity='.22' stroke-dasharray='2 2'/%3E%3C/svg%3E") center bottom/1.16em 1.16em no-repeat}
+#ex .big rt{display:block;margin-bottom:.35em;font:500 14px/1 var(--ui);letter-spacing:.02em}
+#ex .btn.sm[data-act=say]{min-height:38px;padding:0 15px;border-radius:999px}
+#ex .btn.sm[data-act=say] .ico{width:12px;height:12px}
+#ex .opt{position:relative;padding-right:46px}
+#ex .opt.ok::after,#ex .opt.no::after{content:"";position:absolute;right:16px;top:50%;width:18px;height:18px;margin-top:-9px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
+#ex .opt.no::after{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 6.5l11 11M17.5 6.5l-11 11' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 6.5l11 11M17.5 6.5l-11 11' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E")}
+#ex .grid2 .opt{text-align:center;padding-right:18px}
+#ex input[type=text]{min-height:58px;padding:10px 4px;border:0;border-bottom:1.5px solid var(--line);border-radius:0;background:none;text-align:center;font:500 24px var(--ui);letter-spacing:.02em}
+#ex input[type=text]:focus{border-bottom-color:var(--ink)}
+#ex input[type=text]::placeholder{font-size:15px;color:var(--muted)}
+#ex textarea{border-radius:12px}
+.tbtn{display:inline-grid;place-items:center;align-content:center;gap:2px;width:46px;height:48px;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer;line-height:1;transition:border-color .15s,transform .12s var(--ease)}
+.tbtn:active{transform:scale(.95)}
+.tbtn b{font:700 20px/1 var(--ui);height:14px}
+.tbtn small{font:600 10px/1 var(--ui);color:var(--muted)}
+#ex .row:has(.tbtn){gap:6px;margin-top:14px!important}
+#ex .row:has(.tbtn){justify-content:center}
+#ex .row:has(.tbtn) .grow{display:none}
+#ex .row:has(.tbtn) .btn.pri{flex-basis:100%;min-height:52px;margin-top:8px}
+/* new-word specimen: no box, the word is the page */
+#ex > .card{margin:4px 0 0;padding:0;border:0;background:none}
+#ex > .card > .center.small.muted:first-child{margin-top:22px;font-weight:600;letter-spacing:.2em;color:var(--seal)}
+#ex > .card .card{margin:14px 0;padding:2px 0 2px 14px;border:0;border-left:2px solid var(--seal);border-radius:0;background:none}
+#ex > .card > p.small{padding:12px 0;margin:0;border-top:1px solid var(--line)}
+#ex > .card > p.small b.hz{font-family:var(--song)!important}
+#ex [data-r=anim]{margin:10px 0 4px}
+#ex > .card .card .hz{font-size:22px!important;line-height:2.1}
+#ex > .card .card rt{font-size:11px;letter-spacing:0}
+#ex .tag{margin-top:6px}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -812,7 +851,7 @@ function gloss(it) {
 }
 function itemHead(it, { py = pinyinMode(it), size = '' } = {}) {
   const show = py === 'show';
-  return `<div class="big ${size} ${S().toneColors ? 'tc' : ''} ${show ? '' : 'nopy'}" data-act="${py === 'tap' ? 'revealpy' : ''}">${rubyHTML(it.s, it.p)}</div>
+  return `<div class="big ${size} ${S().toneColors && show ? 'tc' : ''} ${show ? '' : 'nopy'}" data-act="${py === 'tap' ? 'revealpy' : ''}">${rubyHTML(it.s, it.p)}</div>
   ${it.t && it.t !== it.s ? `<div class="center"><button class="chip" data-act="trad" data-t="${esc(it.t)}">繁 traditional</button></div>` : ''}
   ${py === 'tap' ? '<div class="center hint">tap the characters for pinyin</div>' : ''}`;
 }
@@ -1286,7 +1325,7 @@ function grade(t, g, res) {
 
 // ---------------- exercises ----------------
 const EX = {};
-const prompt = (it, extra = '') => `<div class="center" style="font-size:20px;margin:8px 0">${esc(gloss(it))}</div>${it.pos ? `<div class="center"><span class="tag">${esc(it.pos)}</span>${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}</div>` : ''}${extra}`;
+const prompt = (it, extra = '') => `<div class="qprompt center">${esc(gloss(it))}</div>${it.pos ? `<div class="center"><span class="tag">${esc(it.pos)}</span>${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}</div>` : ''}${extra}`;
 function distract(it, n, key = 'en') {
   const pool = [...D.items.values()].filter(x => x.k === it.k && x.id !== it.id && x[key] && x[key] !== it[key] && x.s !== it.s);
   const near = pool.filter(x => x.unit === it.unit);
@@ -1301,10 +1340,10 @@ function bindMC(host, opts, correctIdx, cb, whyFn) {
   });
 }
 function exIntro(host, it) {
-  const chs = [...it.s].filter(Core.isHan);
+  const chs = [...new Set([...it.s].filter(Core.isHan))];
   host.innerHTML = `<div class="card"><div class="center small muted">新${it.k === 'syl' ? '音' : it.k === 'rad' ? '部首' : '词'}</div><div class="intro-echo">${echoHTML(it.s, (n => n <= 2 ? '' : n === 3 ? 'min(24vw,92px)' : 'min(17vw,70px)')([...it.s].length))}</div>${it.t && it.t !== it.s ? `<div class="center"><button class="chip" data-act="trad" data-t="${esc(it.t)}">繁 traditional</button></div>` : ''}
     <div class="center tc" style="font-size:18px">${pyHTML(it.s, it.p)}</div>${audioBtns(it.s)}
-    <div class="center" style="font-size:20px;margin:8px 0">${esc(it.en)}</div>${it.zh ? `<div class="center muted">${esc(it.zh)}</div>` : ''}
+    <div class="qprompt center">${esc(it.en)}</div>${it.zh ? `<div class="center muted">${esc(it.zh)}</div>` : ''}
     <div class="center">${it.pos ? `<span class="tag">${esc(it.pos)}</span>` : ''}${it.mw ? `<span class="tag">量词 ${esc(it.mw)}</span>` : ''}${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}${it.hsk ? `<span class="tag">HSK ${it.hsk}</span>` : ''}</div>
     ${it.k !== 'syl' ? `<div class="center" data-r="anim" style="margin-top:8px"></div>` : ''}
     ${chs.map(c => { const v = D.chars.get(c); return v ? `<p class="small"><b class="hz" style="font-size:20px">${c}</b> ${esc(v.p)} · ${esc(v.m)}${v.c && v.c.length ? ` · ${esc(v.c.join(' + '))}` : ''}${v.r ? ` · 部首 ${esc(v.r)}` : ''}<br><span class="muted">${esc(v.h || '')}</span></p>` : ''; }).join('')}
@@ -1324,7 +1363,7 @@ EX.mcMeaning = (host, it, cb) => {
 };
 function pyInput(host, ph = 'pinyin with tone numbers: ni3 hao3') {
   return `<input type="text" data-r="in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${ph}">
-  <div class="row" style="margin-top:6px">${[1, 2, 3, 4].map(n => `<button class="btn sm ic" data-tone="${n}">${n}</button>`).join('')}<button class="btn sm ic" data-tone="ü">ü</button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
+  <div class="row" style="margin-top:6px">${[1, 2, 3, 4].map(n => `<button class="tbtn" data-tone="${n}" aria-label="tone ${n}"><b>${'ˉˊˇˋ'[n - 1]}</b><small>${n}</small></button>`).join('')}<button class="tbtn" data-tone="ü" aria-label="ü"><b>ü</b><small>v</small></button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
 }
 function bindPy(host, onCheck) {
   const inp = $('[data-r=in]', host);
