@@ -579,17 +579,27 @@ const TTS = {
   },
   speak(text, rate) {
     if (!this.ok) { toast('No speech synthesis in this browser'); return Promise.resolve(); }
-    speechSynthesis.cancel();
+    if (!this.voice) this.pick();
+    // Chrome/Android drops an utterance spoken right after cancel(); only cancel when something is playing
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    speechSynthesis.resume(); // Safari can get stuck in a paused state
     return new Promise(res => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'zh-CN'; if (this.voice) u.voice = this.voice;
       u.rate = rate || S().rate; u.onend = u.onerror = () => res();
+      this.cur = u; // keep a reference: Chrome garbage-collects utterances mid-speech
       speechSynthesis.speak(u);
       setTimeout(res, 2500 + text.length * 600 / (u.rate || 1)); // iOS sometimes never fires onend
     });
   }
 };
-if (TTS.ok) speechSynthesis.onvoiceschanged = () => TTS.pick();
+if (TTS.ok) {
+  speechSynthesis.onvoiceschanged = () => TTS.pick();
+  // iOS only allows speech after a speak() inside a user gesture: unlock on the first touch
+  const unlock = () => { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'zh-CN'; speechSynthesis.speak(u); } catch (e) {} TTS.pick();
+    if (META && !speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) setTimeout(() => { if (!speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) toast('No Chinese voice found on this phone: see More → Browser support'); }, 1500); };
+  document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+}
 const say = (t, r) => TTS.speak(t, r);
 function listenRate(it) { const c = CARDS.get(it.id + '|listening'); const s = c && c.st === 2 ? c.s : 0; return s < 3 ? 0.6 : s < 21 ? S().rate : Math.min(1.25, S().rate + 0.25); }
 
@@ -1525,7 +1535,7 @@ V.settings = () => {
 };
 V.help = () => {
   view.innerHTML = `<h2>ℹ️ Browser support</h2><div class="card small">
-  <p><b>Speech out</b>: ${TTS.ok ? '✓ available' : '✗ missing'}${TTS.voice ? ` · voice: ${esc(TTS.voice.name)}` : ' · no Chinese voice found yet'}. iPhone: Settings → Accessibility → Spoken Content → Voices → Chinese (China mainland) → download an "Enhanced" voice. Android: install Google Speech Services and the Chinese (Mandarin) voice data.</p>
+  <p><b>Speech out</b>: ${TTS.ok ? '✓ available' : '✗ missing'}${TTS.voice ? ` · voice: ${esc(TTS.voice.name)} (${esc(TTS.voice.lang)})` : ' · no Chinese voice found yet'} · ${TTS.ok ? speechSynthesis.getVoices().length : 0} voices installed, ${TTS.ok ? speechSynthesis.getVoices().filter(v => /^zh|cmn/i.test(v.lang)).length : 0} Chinese. <button class="btn sm" data-act="say" data-t="你好，我们开始学习吧。">▶ test</button><br>No sound? iPhone: flip the ring/silent switch to ring and turn the volume up (speech follows the ringer). iPhone: Settings → Accessibility → Spoken Content → Voices → Chinese (China mainland) → download an "Enhanced" voice. Android: install Google Speech Services and the Chinese (Mandarin) voice data.</p>
   <p><b>Speech recognition</b>: ${SRClass ? '✓ available' : '✗ not in this browser: you will compare recordings and grade yourself'}. Works best in Chrome on Android. On iPhone it uses Siri dictation (turn on Siri & Dictation, add Chinese (Mainland) as a dictation language); it can be flaky inside a home-screen app, so if it fails, open the site in Safari or switch recognition off in settings.</p>
   <p><b>Microphone & pitch</b>: ${navigator.mediaDevices ? '✓' : '✗'} needs HTTPS (or localhost). The tone contour is measured from your voice and compared with tone templates (Chao 55/35/214/51). Speak each syllable clearly; whispering or a noisy room gives no pitch.</p>
   <p><b>Handwriting</b>: ${HW_OK() ? '✓ Hanzi Writer loaded' : '✗ Hanzi Writer not loaded (offline on first run?)'}. Stroke data downloads per character and is cached for offline use.</p>
