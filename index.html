@@ -268,6 +268,19 @@ textarea{min-height:120px}
 .chk:not([data-st=ok]) details{display:block}
 .chk[data-st=ok] details{display:none}
 
+
+/* writing */
+.hwmode{max-width:280px;margin:16px auto 4px}
+.hwctl{justify-content:center;gap:8px;margin-top:4px}
+.hwctl .btn{min-width:120px}
+canvas.brush{display:block;touch-action:none;cursor:crosshair}
+.compare{display:flex;justify-content:center;gap:12px;margin:12px auto}
+.compare figure{margin:0;text-align:center}
+.compare img,.compare .model{display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--seal) 55%,transparent);border-radius:4px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 0v40M0 20h40M0 0l40 40M40 0L0 40' stroke='%23C23B22' stroke-opacity='.2' stroke-dasharray='1.5 2' stroke-width='.4'/%3E%3C/svg%3E") center/100% 100%}
+.compare .model{cursor:pointer}
+.compare .model span{font:400 96px/1 var(--kai);color:var(--ink)}
+.compare figcaption{margin-top:6px;font:600 12px var(--ui);color:var(--muted)}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -297,7 +310,7 @@ textarea{min-height:120px}
 canvas.pitch{display:block;width:100%;height:150px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
 
 /* handwriting: 米字格 practice grid in vermilion hairlines */
-.hwbox{width:260px;height:260px;margin:12px auto;border:1px solid color-mix(in srgb,var(--seal) 55%,transparent);border-radius:4px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg stroke='%23C23B22' stroke-opacity='.28' stroke-dasharray='4 5' stroke-width='1'%3E%3Cline x1='0' y1='0' x2='260' y2='260'/%3E%3Cline x1='260' y1='0' x2='0' y2='260'/%3E%3Cline x1='130' y1='0' x2='130' y2='260'/%3E%3Cline x1='0' y1='130' x2='260' y2='130'/%3E%3C/g%3E%3C/svg%3E");touch-action:none;-webkit-user-select:none;user-select:none;overscroll-behavior:contain}
+.hwbox{width:260px;height:260px;margin:10px auto;border:1px solid color-mix(in srgb,var(--seal) 55%,transparent);border-radius:4px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg stroke='%23C23B22' stroke-opacity='.28' stroke-dasharray='4 5' stroke-width='1'%3E%3Cline x1='0' y1='0' x2='260' y2='260'/%3E%3Cline x1='260' y1='0' x2='0' y2='260'/%3E%3Cline x1='130' y1='0' x2='130' y2='260'/%3E%3Cline x1='0' y1='130' x2='260' y2='130'/%3E%3C/g%3E%3C/svg%3E");touch-action:none;-webkit-user-select:none;user-select:none;overscroll-behavior:contain}
 .hwsm{display:inline-block;width:108px;height:108px;margin:4px;border:1px solid var(--line);border-radius:4px;background:var(--card)}
 .echo{font:600 var(--es,92px)/1.15 var(--song);color:var(--ink)}
 .intro-echo{text-align:center;padding:14px 0 4px}
@@ -926,7 +939,7 @@ if (TTS.ok) {
   speechSynthesis.onvoiceschanged = () => { TTS.pick(); if (location.hash === '#settings' && META) V.settings(); };
   // iOS only allows speech after a speak() inside a user gesture: unlock on the first touch
   const unlock = () => { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'zh-CN'; speechSynthesis.speak(u); } catch (e) {} TTS.pick();
-    if (META && !speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) setTimeout(() => { if (!speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) toast('No Chinese voice found on this phone: see More → Browser support'); }, 1500); };
+    if (META && !speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) setTimeout(() => { if (!speechSynthesis.getVoices().some(v => /^zh|cmn/i.test(v.lang))) toast('No Chinese voice on this phone: see More › Help'); }, 1500); };
   document.addEventListener('pointerdown', unlock, { once: true, capture: true });
 }
 // Native recordings (audio-cmn, CC BY-SA): single characters use the tone-syllable recording, words the HSK word recording.
@@ -1143,28 +1156,67 @@ function speakPanel(host, target, cb) {
 // ---------------- handwriting ----------------
 const HW_OK = () => typeof HanziWriter !== 'undefined';
 function hwColors() { const css = getComputedStyle(document.documentElement), c = v => css.getPropertyValue(v).trim(); return { strokeColor: c('--ink'), outlineColor: c('--hw-outline'), drawingColor: c('--ink'), highlightColor: c('--t4'), radicalColor: c('--t3') }; }
-function writeChars(host, text, { outline = false, onDone }) { // sequential quiz over every han char
+function writeChars(host, text, { outline = false, onDone }) { // one character at a time; guided (forgiving stroke check) or free brush
   const chars = [...text].filter(Core.isHan);
-  let i = 0, total = 0;
-  host.innerHTML = `<div class="center small muted" data-r="pos"></div><div class="hwbox" data-r="box"></div><div class="row" style="justify-content:center"><button class="btn sm" data-r="hint">${ic('hint')} hint stroke</button><button class="btn sm" data-r="give">show me</button></div>`;
-  const box = $('[data-r=box]', host), pos = $('[data-r=pos]', host);
-  if (!HW_OK()) { return fallback(); }
-  let w = null;
+  const size = Math.min(320, Math.max(240, (innerWidth || 360) - 48));
+  let i = 0, total = 0, w = null, mode = outline ? 'guided' : (S().hwMode || 'guided');
+  host.innerHTML = `${outline ? '' : `<div class="seg hwmode" role="radiogroup" aria-label="Writing mode"><button role="radio" data-m="guided">笔顺 Guided</button><button role="radio" data-m="free">自由 Free</button></div>`}
+    <div class="center small muted" data-r="pos"></div><div class="hwbox" data-r="box" style="width:${size}px;height:${size}px"></div><div class="row hwctl" data-r="ctl"></div>`;
+  let box = $('[data-r=box]', host); const pos = $('[data-r=pos]', host), ctl = $('[data-r=ctl]', host);
+  const advance = m => { total += m; i++; setTimeout(next, 420); };
+  $$('[data-m]', host).forEach(b => b.onclick = () => { mode = b.dataset.m; S().hwMode = mode; save(); w && w.cancelQuiz && w.cancelQuiz(); next(); });
   function next() {
     if (i >= chars.length) return onDone({ mistakes: total, chars: chars.length });
+    $$('[data-m]', host).forEach(b => b.setAttribute('aria-checked', String(b.dataset.m === mode)));
+    box = $('[data-r=box]', host) || box; // the compare view replaces the box
     pos.textContent = chars.length > 1 ? `character ${i + 1} of ${chars.length}` : '';
     box.innerHTML = '';
-    try { w = HanziWriter.create(box, chars[i], { width: 260, height: 260, padding: 14, showCharacter: false, showOutline: outline, showHintAfterMisses: outline ? 1 : 3, drawingWidth: 22, ...hwColors(),
-      onLoadCharDataError: () => fallback() });
-    w.quiz({ onComplete: s => { total += s.totalMistakes; i++; setTimeout(next, 450); } }); } catch (e) { console.warn('handwriting', e); fallback(); }
+    if (mode === 'free' || !HW_OK()) return free(chars[i]);
+    try {
+      w = HanziWriter.create(box, chars[i], { width: size, height: size, padding: 16, showCharacter: false, showOutline: outline, drawingWidth: Math.round(size * 0.085), ...hwColors(), onLoadCharDataError: () => free(chars[i]) });
+      w.quiz({ leniency: outline ? 1.5 : 1.8, acceptBackwardsStrokes: true, markStrokeCorrectAfterMisses: outline ? false : 2, showHintAfterMisses: outline ? 1 : 2, onComplete: s => advance(s.totalMistakes) });
+    } catch (e) { console.warn('handwriting', e); return free(chars[i]); }
+    ctl.innerHTML = `<button class="btn sm" data-r="hint">${ic('hint')} Hint stroke</button><button class="btn sm" data-r="give">Show me</button>`;
+    $('[data-r=hint]', ctl).onclick = () => { total += 1; w.cancelQuiz(); w.showOutline(); w.quiz({ leniency: 1.8, acceptBackwardsStrokes: true, markStrokeCorrectAfterMisses: 2, showHintAfterMisses: 1, onComplete: s => advance(s.totalMistakes) }); };
+    $('[data-r=give]', ctl).onclick = () => { w.cancelQuiz(); w.animateCharacter({ onComplete: () => advance(99) }); };
   }
-  $('[data-r=hint]', host).onclick = () => { if (!w) return; total += 1; w.cancelQuiz(); w.showOutline(); w.quiz({ showHintAfterMisses: 1, onComplete: s => { total += s.totalMistakes; i++; setTimeout(next, 450); } }); };
-  $('[data-r=give]', host).onclick = () => { total += 99; w && w.cancelQuiz(); w && w.animateCharacter({ onComplete: () => { i++; setTimeout(next, 600); } }); };
-  function fallback() {
-    host.innerHTML = `<p class="center muted small">Stroke data could not load (offline?). Write <b class="hz">${esc(text)}</b> on paper, then check.</p><div class="big md">${esc(text)}</div><div class="grid2"><button class="btn" data-r="b">${ic('close')} Wrong</button><button class="btn pri" data-r="g">${ic('check')} Right</button></div>`;
-    $('[data-r=b]', host).onclick = () => onDone({ mistakes: 99, chars: chars.length });
-    $('[data-r=g]', host).onclick = () => onDone({ mistakes: 0, chars: chars.length });
+  // free brush: write the whole character your own way, then compare with the model
+  function free(ch) {
+    const dpr = devicePixelRatio || 1;
+    box.innerHTML = `<canvas class="brush" width="${size * dpr}" height="${size * dpr}" style="width:${size}px;height:${size}px" aria-label="Writing area"></canvas>`;
+    const cv = $('canvas', box), g = cv.getContext('2d'); g.scale(dpr, dpr); g.lineCap = g.lineJoin = 'round';
+    g.strokeStyle = g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+    let last = null, mid = null, lw = 0, inked = false;
+    const at = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }; };
+    const base = size * 0.06;
+    cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); last = mid = at(e); lw = base * (e.pointerType === 'pen' && e.pressure ? 0.5 + e.pressure : 1); g.beginPath(); g.arc(last.x, last.y, lw / 2, 0, 7); g.fill(); inked = true; };
+    cv.onpointermove = e => {
+      if (!last) return; e.preventDefault();
+      const p = at(e), d = Math.hypot(p.x - last.x, p.y - last.y); if (d < 1.5) return;
+      const v = d / Math.max(1, p.t - last.t); // px per ms: faster strokes get thinner, like a brush
+      let target = Math.max(base * 0.35, Math.min(base * 1.25, base * (1.2 - v * 0.55)));
+      if (e.pointerType === 'pen' && e.pressure) target *= 0.5 + e.pressure;
+      lw = lw * 0.65 + target * 0.35;
+      const m = { x: (last.x + p.x) / 2, y: (last.y + p.y) / 2 };
+      g.lineWidth = lw; g.beginPath(); g.moveTo(mid.x, mid.y); g.quadraticCurveTo(last.x, last.y, m.x, m.y); g.stroke();
+      mid = m; last = p;
+    };
+    cv.onpointerup = cv.onpointercancel = () => { if (last && mid) { g.lineWidth = lw * 0.6; g.beginPath(); g.moveTo(mid.x, mid.y); g.lineTo(last.x, last.y); g.stroke(); } last = mid = null; };
+    ctl.innerHTML = `<button class="btn sm" data-r="clr">Clear</button><button class="btn sm pri" data-r="done">${ic('check')} Done</button>`;
+    $('[data-r=clr]', ctl).onclick = () => { g.clearRect(0, 0, size, size); inked = false; };
+    $('[data-r=done]', ctl).onclick = () => {
+      if (!inked) return toast('Write the character first');
+      const img = cv.toDataURL();
+      const half = Math.floor((size - 12) / 2);
+      box.outerHTML = `<div class="compare" data-r="box"><figure><img src="${img}" alt="Your writing" width="${half}" height="${half}"><figcaption>Yours</figcaption></figure><figure><div class="model" data-r="model" style="width:${half}px;height:${half}px"><span>${esc(ch)}</span></div><figcaption>Model · tap to watch</figcaption></figure></div>`;
+      const model = $('[data-r=model]', host);
+      model.onclick = () => { if (!HW_OK()) return; model.innerHTML = ''; const a = HanziWriter.create(model, ch, { width: half, height: half, padding: 8, strokeAnimationSpeed: 1.1, delayBetweenStrokes: 160, ...hwColors(), onLoadCharDataError: () => { model.innerHTML = `<span>${esc(ch)}</span>`; } }); a.animateCharacter(); };
+      ctl.innerHTML = `<button class="btn" data-r="no">Not quite</button><button class="btn pri" data-r="yes">${ic('check')} Looks right</button>`;
+      $('[data-r=no]', ctl).onclick = () => { restoreBox(); advance(99); };
+      $('[data-r=yes]', ctl).onclick = () => { restoreBox(); advance(0); };
+    };
   }
+  function restoreBox() { const c = $('.compare', host); if (c) { c.outerHTML = `<div class="hwbox" data-r="box" style="width:${size}px;height:${size}px"></div>`; } }
   next();
 }
 function animateChars(host, text) {
