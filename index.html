@@ -281,6 +281,22 @@ canvas.brush{display:block;touch-action:none;cursor:crosshair}
 .compare .model span{font:400 96px/1 var(--kai);color:var(--ink)}
 .compare figcaption{margin-top:6px;font:600 12px var(--ui);color:var(--muted)}
 
+
+/* pinyin overview */
+.pytones{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.pytone{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 2px 10px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer}
+.pytone svg{width:34px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.pytone.t5 svg{fill:currentColor;stroke:none}
+.pytone b{font:700 18px var(--ui)}.pytone small{font:600 9.5px/1.2 var(--ui);color:var(--muted);text-align:center}
+.pytone.t1{color:var(--t1)}.pytone.t2{color:var(--t2)}.pytone.t3{color:var(--t3)}.pytone.t4{color:var(--t4)}.pytone.t5{color:var(--t5)}
+.pygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-bottom:6px}
+.pytile{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 2px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer;transition:border-color .15s,transform .12s var(--ease)}
+.pytile:active{transform:scale(.96)}
+.pytile b{font:700 19px var(--ui)}
+.pytile small{font:500 11px var(--ui);color:var(--muted);white-space:nowrap}
+.pytile.on{border-color:var(--seal);box-shadow:inset 0 0 0 1px var(--seal)}.pytile.on small{color:var(--seal)}
+.pygroup{margin:14px 0 6px;font:600 12px var(--ui);color:var(--muted)}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -1676,6 +1692,7 @@ function lessonUnlocked(l) { const u = D.unitById.get(l.unit), i = u.lessons.ind
 function nextLesson() { for (const st of D.stages) for (const u of unitsOfStage(st.n)) { if (!unitUnlocked(u)) continue; for (const l of u.lessons) if (!lessonDone(l.id)) return l; } return null; }
 function markLesson(l) { META.progress.lessons[l.id] = Date.now(); save(); }
 function startLesson(l) {
+  if (l.type === 'pinyin') return go(`#pinyin/${l.id}`);
   if (l.type === 'text') return go(`#text/${l.text}/${l.id}`);
   if (l.type === 'scenario') return go(`#scen/${D.unitById.get(l.unit).scenario.id}/${l.id}`);
   const items = (l.items || []).map(id => D.items.get(id)).filter(Boolean);
@@ -1784,8 +1801,8 @@ V.unit = id => {
   const u = D.unitById.get(id); if (!u) return go('#course');
   const ok = unitUnlocked(u), done = u.lessons.filter(l => lessonDone(l.id)).length;
   const cur = u.lessons.find(l => !lessonDone(l.id) && lessonUnlocked(l));
-  const kind = { new: '生词', text: '阅读', drill: '练习', scenario: '情景' };
-  const detail = l => l.type === 'new' ? `${(l.items || []).length} items` : l.type === 'drill' ? `${(l.ex || []).length} drills` : l.type === 'text' ? 'read and recite' : 'role-play';
+  const kind = { new: '生词', text: '阅读', drill: '练习', scenario: '情景', pinyin: '拼音' };
+  const detail = l => l.type === 'pinyin' ? 'initials, finals, tones' : l.type === 'new' ? `${(l.items || []).length} items` : l.type === 'drill' ? `${(l.ex || []).length} drills` : l.type === 'text' ? 'read and recite' : 'role-play';
   const sc = META.progress.units[u.id];
   // the road: stops on a gentle sine, joined by one smooth curve; the walked part is drawn in vermilion
   const stops = u.lessons.map((l, i) => ({ l, i, st: lessonDone(l.id) ? 'done' : !lessonUnlocked(l) ? 'lock' : l === cur ? 'cur' : 'open' }));
@@ -1796,7 +1813,7 @@ V.unit = id => {
   const road = `<div class="road" style="aspect-ratio:340/${H}"><svg class="road-svg" viewBox="0 0 340 ${H}" aria-hidden="true"><path class="road-base" d="${curve(stops.length - 1)}"/>${reached ? `<path class="road-done" pathLength="1" d="${curve(reached)}"/>` : ''}</svg>
     ${stops.map((x, i) => { const side = X(i) >= 170 ? 'l' : 'r', pos = `left:${(X(i) / 340 * 100).toFixed(2)}%;top:${(Y(i) / H * 100).toFixed(2)}%`;
       if (x.check) return `<div class="rstop side-${side}" style="${pos}"><button class="rnode rcheck ${x.st}" data-act="${x.st === 'lock' ? '' : 'check'}" data-id="${u.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="Unit checkpoint, 85% to pass">考</button><div class="rlabel"><small>检测 · Checkpoint</small><b>单元检测</b><small>${sc != null ? `best ${sc}%` : '85% to pass'}</small></div></div>`;
-      const l = x.l, glyph = l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : { text: '读', drill: '练', scenario: '说' }[l.type] || '学';
+      const l = x.l, glyph = l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : { text: '读', drill: '练', scenario: '说', pinyin: '拼' }[l.type] || '学';
       return `<div class="rstop side-${side}" style="${pos}"><button class="rnode ${x.st}" data-act="${x.st === 'lock' ? '' : 'lesson'}" data-id="${l.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="${esc(l.title)}${x.st === 'done' ? ', done' : x.st === 'lock' ? ', locked' : ''}">${x.st === 'done' ? ic('check') : x.st === 'lock' ? ic('lock') : glyph}</button><div class="rlabel"><small>${String(i + 1).padStart(2, '0')} · ${kind[l.type] || ''}</small><b>${esc(l.title)}</b>${x.st === 'cur' ? '<span class="go">开始</span>' : `<small>${detail(l)}</small>`}</div></div>`; }).join('')}</div>`;
   view.innerHTML = `<section class="uhead"><div class="vnum" aria-hidden="true">第${Core.numToZh(u.n)}单元</div><p class="meta">第${Core.numToZh(u.stage)}阶段</p><h2 class="display">${esc(u.title)}</h2><p class="en">${esc(u.en)}</p>
     <div class="uprog"><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><span>${done} / ${u.lessons.length}</span></div></section>
@@ -1991,6 +2008,37 @@ V.dash = () => {
   <h3>Reviews due, next 14 days</h3>${forecastHTML(14)}
   <div class="card"><b>Weakest items</b><div class="list">${weakest.map(c => { const it = D.items.get(c.item) || D.ex.get(c.item) || {}; return `<div class="li"><span class="hz">${esc(it.s || it.q || it.w || c.item)}</span><span class="grow small">${SK_ZH[c.skill]} · ${c.lapses} lapses · ${c.st === 2 ? Math.round(c.s) + 'd' : 'learning'}</span>${c.leech ? ic('alert') : ''}</div>`; }).join('') || '<p class="small muted">Nothing yet.</p>'}</div></div>
   <div class="card small muted">Streak ${META.streak.n} · ${cs.length} cards · ${Object.keys(META.progress.lessons).length} lessons done</div>`;
+};
+// 拼音总览: every initial and final, each played in all four tones, from the syllable table + recordings
+V.pinyin = lessonId => {
+  const INI = [['b', 'ba'], ['p', 'pa'], ['m', 'ma'], ['f', 'fa'], ['d', 'da'], ['t', 'ta'], ['n', 'na'], ['l', 'la'], ['g', 'ge'], ['k', 'ke'], ['h', 'he'], ['j', 'ji'], ['q', 'qi'], ['x', 'xi'], ['zh', 'zhi'], ['ch', 'chi'], ['sh', 'shi'], ['r', 'ri'], ['z', 'zi'], ['c', 'ci'], ['s', 'si'], ['y', 'yi'], ['w', 'wu']];
+  const FIN = [['Simple', [['a', 'a'], ['o', 'o'], ['e', 'e'], ['i', 'yi'], ['u', 'wu'], ['ü', 'yu'], ['er', 'er']]],
+    ['Compound', [['ai', 'ai'], ['ei', 'bei'], ['ao', 'ao'], ['ou', 'ou']]],
+    ['Nasal', [['an', 'an'], ['en', 'en'], ['ang', 'ang'], ['eng', 'feng'], ['ong', 'dong']]],
+    ['With i', [['ia', 'ya'], ['ie', 'ye'], ['iao', 'yao'], ['iu', 'you'], ['ian', 'yan'], ['in', 'yin'], ['iang', 'yang'], ['ing', 'ying'], ['iong', 'yong']]],
+    ['With u', [['ua', 'wa'], ['uo', 'wo'], ['uai', 'wai'], ['ui', 'wei'], ['uan', 'wan'], ['un', 'wen'], ['uang', 'wang']]],
+    ['With ü', [['üe', 'yue'], ['üan', 'yuan'], ['ün', 'yun']]]];
+  const tones = k => [...(D.syl[k] || '____')].map((c, i) => c !== '_' ? [c, Core.markSyl(k.replace('v', 'ü'), i + 1), i + 1] : null).filter(Boolean);
+  const tile = (label, k) => { const t = tones(k); return `<button class="pytile" data-k="${k}"><b>${esc(label)}</b><small>${esc(t.length ? t[0][1] : k)} ${esc(t.length ? t[0][0] : '')}</small></button>`; };
+  view.innerHTML = `<section class="uhead"><p class="meta">第一课</p><h2 class="display">拼音总览</h2><p class="en">All of pinyin, with the tones</p></section>
+    <p class="uintro">A syllable is an initial (声母), a final (韵母) and a tone (声调). Tap any tile: you'll hear it in each tone it has, from tone 1 to tone 4.</p>
+    <h3>声调 · The four tones</h3>
+    <div class="pytones">${[1, 2, 3, 4].map(n => `<button class="pytone t${n}" data-say="${'妈麻马骂'[n - 1]}" data-p="${Core.markSyl('ma', n)}"><svg viewBox="0 0 40 24" aria-hidden="true"><path d="${['M4 6H36', 'M4 16L36 4', 'M4 10L18 20L36 4', 'M4 4L36 20'][n - 1]}"/></svg><b>${Core.markSyl('ma', n)}</b><small>${['high, level', 'rising', 'low, dipping', 'falling'][n - 1]}</small></button>`).join('')}
+      <button class="pytone t5" data-say="妈妈"><svg viewBox="0 0 40 24" aria-hidden="true"><circle cx="20" cy="14" r="3"/></svg><b>ma</b><small>neutral: short, light</small></button></div>
+    <h3>声母 · Initials</h3><div class="pygrid">${INI.map(([l, k]) => tile(l, k)).join('')}</div>
+    <p class="note-s">b p · d t · g k · j q · zh ch · z c come in pairs: the second has a puff of air. zh ch sh r curl the tongue back; z c s keep it behind the teeth; j q x keep it flat.</p>
+    <h3>韵母 · Finals</h3>${FIN.map(([g, list]) => `<p class="pygroup">${g}</p><div class="pygrid">${list.map(([l, k]) => tile(l, k)).join('')}</div>`).join('')}
+    <p class="note-s">Tone marks go on a or e if there is one, on the o of ou, otherwise on the last vowel: hǎo, gǒu, liú, guì. After j q x y, ü is written u: ju, qu, xu, yu.</p>
+    <a class="btn block" href="#chart">Open the full pinyin chart</a>
+    ${lessonId ? `<button class="btn block cta" data-r="finish">完成 Finish lesson</button>` : ''}`;
+  const playTones = async btn => {
+    const t = tones(btn.dataset.k); $$('.pytile.on').forEach(b => b.classList.remove('on')); btn.classList.add('on');
+    for (const [c, mark] of t) { btn.querySelector('small').textContent = `${mark} ${c}`; await say(c, 0.85, mark); await new Promise(r => setTimeout(r, 180)); }
+    btn.classList.remove('on');
+  };
+  $$('.pytile').forEach(b => b.onclick = () => playTones(b));
+  $$('.pytone').forEach(b => b.onclick = () => say(b.dataset.say, 0.8, b.dataset.p));
+  const fin = $('[data-r=finish]'); if (fin) fin.onclick = () => { const l = D.lessons.get(lessonId); markLesson(l); go('#unit/' + l.unit); };
 };
 V.chart = () => {
   const IN = ['', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'zh', 'ch', 'sh', 'r', 'z', 'c', 's', 'y', 'w'];
