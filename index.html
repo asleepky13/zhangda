@@ -392,6 +392,12 @@ header .back .ico{width:22px;height:22px;transform:rotate(180deg);stroke-width:2
 .radq{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0 16px}.radq b{font:700 72px/1 var(--hz)}.radq .pos{width:40px;height:40px}
 .radlink{color:var(--seal);text-decoration:none;font-weight:600}
 
+
+.radpt{display:flex;gap:12px;align-items:flex-start}
+.radpt .pos{width:20px;height:20px;margin-top:6px}.radpt>b{font:700 34px/1.1 var(--hz)!important;min-width:1.1em;margin:0!important}
+.radpt span{font-size:14px;line-height:1.55}
+.rad.seen::after{content:"";position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--good)}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -1597,7 +1603,7 @@ function exIntro(host, it) {
     <div class="qprompt center">${esc(it.en)}</div>${it.zh ? `<div class="center muted">${esc(it.zh)}</div>` : ''}
     <div class="center">${it.pos ? `<span class="tag">${esc(POS[it.pos] || it.pos)}</span>` : ''}${it.mw ? `<span class="tag">量词 ${esc(it.mw)}</span>` : ''}${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}${it.hsk ? `<span class="tag">HSK ${it.hsk}</span>` : ''}</div>
     ${it.k !== 'syl' ? `<div class="center" data-r="anim" style="margin-top:8px"></div>` : ''}
-    ${chs.map(c => { const v = D.chars.get(c); return v ? `<p class="small"><b class="hz" style="font-size:20px">${c}</b> ${esc(v.p)} · ${esc(v.m)}${v.c && v.c.length ? ` · ${esc(v.c.join(' + '))}` : ''}${v.r ? ` · ${radLink(v)}` : ''}<br><span class="muted">${esc(v.h || '')}</span></p>` : ''; }).join('')}
+    ${chs.map(c => { const v = D.chars.get(c); return v ? `<p class="small"><b class="hz" style="font-size:20px">${c}</b> ${esc(v.p)} · ${esc(v.m)}${v.c && v.c.length ? ` · ${esc(v.c.join(' + '))}` : ''}${v.r ? ` · ${radLink(v, c)}` : ''}<br><span class="muted">${esc(v.h || '')}</span></p>` : ''; }).join('')}
     ${it.note ? `<p class="small">${ic('hint')} ${esc(it.note)}</p>` : ''}
     ${(it.ex || []).map(e => `<div class="card" style="margin:6px 0"><div class="hz tc" style="font-size:19px">${rubyHTML(e.zh, e.p)}</div><div class="small muted">${esc(e.en)}</div><button class="btn sm" data-act="say" data-t="${esc(e.zh)}">${ic('play')}</button></div>`).join('')}
     ${it.col && it.col.length ? `<p class="small">搭配: ${it.col.map(esc).join(' · ')}</p>` : ''}
@@ -1943,6 +1949,19 @@ function startLesson(l) {
   // 2. the rules behind the words
   const notes = items.filter(it => it.note);
   if (notes.length) tasks.push({ kind: 'info', html: `<p class="muted center">要点 · Key points</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:14px">${esc(l.title)}</h2><div class="points">${notes.map(it => `<div><b class="hz">${esc(it.s)}</b><span class="tc">${pyHTML(it.s, it.p)}</span><p>${esc(it.note)}</p>${(it.ex || [])[0] ? `<p class="hz pex">${esc(it.ex[0].zh)}<br><span>${esc(it.ex[0].en)}</span></p>` : ''}</div>`).join('')}</div>` });
+  // 2b. 部首: the parts these characters are built from; new ones explained, all of them practised
+  const radUse = new Map(); // radical index → lesson words that contain it
+  if (D.rad) for (const it of items.filter(x => x.k !== 'syl')) for (const ch of new Set([...it.s].filter(Core.isHan))) { const v = D.chars.get(ch); const i = v ? radOf(v) : -1; if (i >= 0) { if (!radUse.has(i)) radUse.set(i, []); radUse.get(i).push([ch, it]); } }
+  const radNew = [...radUse.keys()].filter(i => !(META.radSeen || {})[radKey(i)]).slice(0, 4);
+  if (radNew.length) tasks.push({ kind: 'info', html: `<p class="muted center">部首 · Parts in this lesson</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:6px">See the part, guess the meaning</h2>
+    <div class="points">${radNew.map(i => { const r = D.rad.list[i], here = [...new Set(radUse.get(i).map(([ch]) => ch))], also = r.ex.filter(e => !here.includes(e[0])).slice(0, 3);
+      return `<div class="radpt">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b><span><b>${esc(r.m)}</b> <small class="muted">· usually ${RADPOS[radGroup(r)][1].toLowerCase().replace('around', 'wrapping around')}: <span class="hz">${esc(r.name)}</span></small>${esc(r.n)}<br><span class="hz">${here.map(esc).join(' ')}</span> <small class="muted">in this lesson</small>${also.length ? ` · <span class="hz">${also.map(e => esc(e[0])).join(' ')}</span> <small class="muted">${also.map(e => esc(e[2])).join(', ')}</small>` : ''}</span></div>`; }).join('')}</div>` });
+  const radPractice = [...radUse.keys()].slice(0, 3).map((i, k) => {
+    const r = D.rad.list[i], [ch, it] = radUse.get(i)[0], fresh = r.ex.filter(e => !items.some(x => x.s.includes(e[0])));
+    // transfer: a character you haven't learned, guessed from the part you just met; else find the part in a lesson word
+    if (fresh.length && k % 2 === 0) return radTask(i, 'guess', pick(fresh), `You know <b class="hz">${esc(ch)}</b> (${esc(it.en)}). `);
+    const v = D.chars.get(ch) || {}; return radTask(i, 'find', [ch, v.p || it.p, v.m || it.en]);
+  });
   // 3. use them: sentences, tones, writing, speaking, all mixed
   const practice = [], words = items.filter(it => it.k !== 'syl'), withEx = shuffle(words.filter(it => (it.ex || []).length));
   for (const it of items) {
@@ -1955,11 +1974,11 @@ function startLesson(l) {
   withEx.slice(0, 3).forEach(it => practice.push(T(it, 'listening', 'listenSentence')));
   withEx.slice(3, 6).concat(withEx.length < 4 ? withEx.slice(0, 2) : []).forEach(it => practice.push(T(it, 'reading', 'buildSentence')));
   withEx.slice(0, 2).forEach(it => practice.push(T(it, 'speaking', 'speakSentence')));
-  tasks.push(...shuffle(practice.filter(Boolean)));
+  tasks.push(...shuffle([...practice.filter(Boolean), ...radPractice]));
   for (const xid of l.ex || []) { const x = D.ex.get(xid); if (x) tasks.push(cardTask(addExCard(x), 'lesson')); }
   // 4. from memory: meaning → Chinese, missed words first (built when reached, from this session's mistakes)
   if (words0.length) tasks.push({ kind: 'recall', pool: words0.map(it => it.id) });
-  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); addSentCards(items); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
+  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); addSentCards(items); radNew.forEach(radMark); save(); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
 }
 function examTasks(items, exs, n) {
   const tasks = [];
@@ -2259,7 +2278,7 @@ V.entry = id => {
     <div class="center" style="font-size:19px;margin-top:6px">${esc(it.en)}</div>${it.zh ? `<div class="center muted">${esc(it.zh)}</div>` : ''}
     <div class="center">${it.pos ? `<span class="tag">${esc(POS[it.pos] || it.pos)}</span>` : ''}${it.mw ? `<span class="tag">量词 ${esc(it.mw)}</span>` : ''}${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}${it.hsk ? `<span class="tag">HSK ${it.hsk}</span>` : ''}</div>
     <div class="center" data-r="anim"></div><p class="center small muted">tap a character to replay strokes</p></div>
-    ${chs.map(c => { const v = D.chars.get(c) || {}; const fam = family(c); return `<div class="card"><div class="row"><span class="big sm" style="margin:0">${c}</span><span class="grow">${esc(v.p || '')} · ${esc(v.m || '')}${v.t && v.t !== c ? ` · 繁 ${esc(v.t)}` : ''}<br><span class="small muted">${esc((v.c || []).join(' + '))}</span>${v.r ? `<br>${radLink(v)}` : ''}</span></div>${v.h ? `<p class="small">${ic('hint')} ${esc(v.h)}</p>` : ''}${fam.length ? `<p class="small">词族: ${fam.map(f => `<a href="#entry/${encodeURIComponent(f.id)}" class="hz">${esc(f.s)}</a>`).join(' · ')}</p>` : ''}</div>`; }).join('')}
+    ${chs.map(c => { const v = D.chars.get(c) || {}; const fam = family(c); return `<div class="card"><div class="row"><span class="big sm" style="margin:0">${c}</span><span class="grow">${esc(v.p || '')} · ${esc(v.m || '')}${v.t && v.t !== c ? ` · 繁 ${esc(v.t)}` : ''}<br><span class="small muted">${esc((v.c || []).join(' + '))}</span>${v.r ? `<br>${radLink(v, c)}` : ''}</span></div>${v.h ? `<p class="small">${ic('hint')} ${esc(v.h)}</p>` : ''}${fam.length ? `<p class="small">词族: ${fam.map(f => `<a href="#entry/${encodeURIComponent(f.id)}" class="hz">${esc(f.s)}</a>`).join(' · ')}</p>` : ''}</div>`; }).join('')}
     ${(it.ex || []).length ? `<div class="card"><b>例句</b>${it.ex.map(e => `<div style="margin:8px 0"><div class="hz tc" style="font-size:18px">${rubyHTML(e.zh, e.p)} <button class="btn sm ic" data-act="say" data-t="${esc(e.zh)}">${ic('play')}</button></div><div class="small muted">${esc(e.en)}</div></div>`).join('')}</div>` : ''}
     ${it.col && it.col.length ? `<div class="card small"><b>搭配</b> ${it.col.map(esc).join(' · ')}</div>` : ''}
     ${it.note ? `<div class="card small">${ic('hint')} ${esc(it.note)}</div>` : ''}
@@ -2306,22 +2325,20 @@ const posSVG = pos => { const R = { left: [[2, 2, 8, 20]], right: [[14, 2, 8, 20
   return `<svg class="pos" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.5" class="pb"/>${R.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="pf"/>`).join('')}</svg>`; };
 function radOf(v) { // which 部首 entry a character's parts point to
   const L = (D.rad || {}).list || [];
-  for (const part of [v.r, ...(v.c || [])].filter(Boolean)) {
-    if (part === '阝') return L.findIndex(r => r.f === '阝' && r.pos === ((v.c || [])[0] === '阝' ? 'left' : 'right'));
-    let i = L.findIndex(r => r.f === part); if (i < 0) i = L.findIndex(r => r.full === part); if (i >= 0) return i;
-  }
-  return -1;
+  const part = v.r; if (!part) return -1; // the character's own radical only: other components can mislead (我 is 戈, not 手)
+  if (part === '阝') return L.findIndex(r => r.f === '阝' && r.pos === ((v.c || [])[0] === '阝' ? 'left' : 'right'));
+  const i = L.findIndex(r => r.f === part); return i >= 0 ? i : L.findIndex(r => r.full === part);
 }
-const radLink = v => { const i = radOf(v), r = i >= 0 && D.rad.list[i]; if (!r) return v.r ? '部首 ' + esc(v.r) : '';
-  // name the position only when the character's own layout agrees (名 has 口 at the bottom, not 口字旁)
-  const c = v.c || [], part = c.find(x => x === r.f || x === r.full) || v.r, fits = !c.length || (['left', 'top', 'lb', 'tl', 'tlr', 'frame', 'tr'].includes(r.pos) ? c[0] === part : c[c.length - 1] === part);
-  return `<a class="radlink" href="#radicals/${i}"><b class="hz">${esc(r.f)}</b> ${fits ? esc(r.name) + ' · ' : ''}${esc(r.m)}</a>`; };
+const radLink = (v, ch) => { const i = radOf(v), r = i >= 0 && D.rad.list[i]; if (!r) return v.r ? '部首 ' + esc(v.r) : '';
+  // the position name only for checked examples: the data doesn't record where a part sits (是 has 日 on top, 明 on the left)
+  const sure = ch && r.ex.some(e => e[0] === ch);
+  return `<a class="radlink" href="#radicals/${i}" data-act="radsheet" data-ri="${i}"><b class="hz">${esc(r.f)}</b> ${sure ? esc(r.name) + ' · ' : ''}${esc(r.m)}</a>`; };
 let RADF = 'all';
 V.radicals = sel => {
   const R = D.rad; if (!R) { view.innerHTML = `${ph('部首', 'Radicals')}<div class="card">Couldn't load the radicals. Connect once and reopen.</div>`; return; }
   const draw = () => {
     const list = R.list.map((r, i) => ({ r, i })).filter(x => RADF === 'all' || radGroup(x.r) === RADF);
-    $('#radgrid').innerHTML = list.map(({ r, i }) => `<button class="rad" data-ri="${i}">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b><span class="hz">${esc(r.name)}</span><small>${esc(r.m)}</small></button>`).join('');
+    $('#radgrid').innerHTML = list.map(({ r, i }) => `<button class="rad${(META.radSeen || {})[radKey(i)] ? ' seen' : ''}" data-ri="${i}">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b><span class="hz">${esc(r.name)}</span><small>${esc(r.m)}</small></button>`).join('');
     $$('#radgrid [data-ri]').forEach(b => b.onclick = () => radSheet(+b.dataset.ri));
     $$('[data-rf]').forEach(b => b.classList.toggle('on', b.dataset.rf === RADF));
   };
@@ -2344,34 +2361,34 @@ function radSheet(i) {
     <div class="radex">${r.ex.map(([c, py, m]) => { const w = word(c); return `<div class="rx"><b class="hz">${esc(c)}</b><span class="grow"><span class="tc">${esc(py)}</span><br><small>${esc(m)}</small></span><button class="lplay" data-act="say" data-t="${esc(c)}" data-p="${esc(py)}" aria-label="Play">${ic('play')}</button>${w ? `<a class="small" href="#entry/${encodeURIComponent(w.id)}">${ic('chev')}</a>` : ''}</div>`; }).join('')}</div>
     ${known.length ? `<p class="small muted" style="margin-top:12px">Also in your course:</p><p class="hz radknown">${known.map(([c, v]) => `<span title="${esc(v.m || '')}">${esc(c)}</span>`).join('')}</p>` : ''}`);
 }
-function startRadQuiz() { // see the part, know its place, name and meaning; then guess new characters from it
-  const L = D.rad.list, other = (r, n) => sample(L.filter(x => x.f !== r.f && x.m !== r.m), n);
-  const tasks = shuffle(L.map((r, i) => ({ r, i }))).slice(0, 12).map(({ r, i }) => {
-    const q = Math.random(), e = pick(r.ex);
-    return { kind: 'custom', run: (host, cb) => {
-      const why = `<b class="hz">${esc(r.f)}</b> ${esc(r.name)} (${esc(RADPOS[radGroup(r)][1].toLowerCase()).replace('around', 'wraps around')}) = ${esc(r.m)}. ${r.ex.map(x => `<span class="hz">${esc(x[0])}</span> ${esc(x[2])}`).join(' · ')}`;
-      const fin = res => cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + why });
-      if (q < 0.4) { // guess a character's meaning from its part
-        const opts = shuffle([e, ...other(r, 3).map(x => pick(x.ex))]);
-        host.innerHTML = `<p class="muted center">部首 · Guess the meaning from its part</p><div class="big md hz">${esc(e[0])}</div><p class="center tc">${esc(e[1])}</p>${mcHTML(opts, o => esc(o[2]))}`;
-        say(e[0], undefined, e[1]); return bindMC(host, opts, opts.indexOf(e), fin);
-      }
-      if (q < 0.65) { // find the meaning part
-        const opts = shuffle([r, ...other(r, 3)]);
-        host.innerHTML = `<p class="muted center">部首 · Which part carries the meaning?</p><div class="big md hz">${esc(e[0])}</div><p class="center">${esc(e[2])}</p><div class="grid2">${opts.map((o, k) => `<button class="opt center hz" style="font-size:34px" data-i="${k}">${esc(o.f)}</button>`).join('')}</div>`;
-        return bindMC(host, opts, opts.indexOf(r), fin);
-      }
-      if (q < 0.85) { // what it means
-        const opts = shuffle([r, ...other(r, 3)]);
-        host.innerHTML = `<p class="muted center">部首 · What does this part mean?</p><div class="radq">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b></div>${mcHTML(opts, o => esc(o.m))}`;
-        return bindMC(host, opts, opts.indexOf(r), fin);
-      }
-      const opts = shuffle([r, ...other(r, 3)]); // what it's called
-      host.innerHTML = `<p class="muted center">部首 · What is it called?</p><div class="radq">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b></div>${mcHTML(opts, o => `<span class="hz">${esc(o.name)}</span> <small class="muted">${esc(o.py)}</small>`)}`;
-      bindMC(host, opts, opts.indexOf(r), fin);
-    } };
-  });
-  startSession(tasks, 'rad', { onDone: (pct, s) => doneScreen({ seal: '一目了然', title: '部首练习', sub: 'Spot the part, guess the meaning: that works on characters you have never seen.', stats: sesStats(s), cta: '部首 Back to radicals', href: '#radicals' }) });
+// kinds: guess (a character's meaning from its part), find (which part carries the meaning), mean, name
+function radTask(i, kind, e, why0 = '') {
+  const L = D.rad.list, r = L[i], other = n => sample(L.filter(x => x.f !== r.f && x.m !== r.m), n);
+  e = e || pick(r.ex);
+  return { kind: 'custom', run: (host, cb) => {
+    const why = `${why0}<b class="hz">${esc(r.f)}</b> ${esc(r.name)} (${RADPOS[radGroup(r)][1].toLowerCase().replace('around', 'wraps around')}) = ${esc(r.m)}. ${r.ex.map(x => `<span class="hz">${esc(x[0])}</span> ${esc(x[2])}`).join(' · ')}`;
+    const fin = res => { radMark(i); cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + why }); };
+    if (kind === 'guess') {
+      const opts = shuffle([e, ...other(3).map(x => pick(x.ex))]);
+      host.innerHTML = `<p class="muted center">部首 · Guess the meaning from its part</p><div class="big md hz">${esc(e[0])}</div><p class="center tc">${esc(e[1])}</p>${mcHTML(opts, o => esc(o[2]))}`;
+      say(e[0], undefined, e[1]); return bindMC(host, opts, opts.indexOf(e), fin);
+    }
+    const opts = shuffle([r, ...other(3)]);
+    if (kind === 'find') {
+      host.innerHTML = `<p class="muted center">部首 · Which part carries the meaning?</p><div class="big md hz">${esc(e[0])}</div><p class="center">${esc(e[2])}</p><div class="grid2">${opts.map((o, k) => `<button class="opt center hz" style="font-size:34px" data-i="${k}">${esc(o.f)}</button>`).join('')}</div>`;
+      return bindMC(host, opts, opts.indexOf(r), fin);
+    }
+    host.innerHTML = `<p class="muted center">部首 · ${kind === 'name' ? 'What is it called?' : 'What does this part mean?'}</p><div class="radq">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b></div>${mcHTML(opts, o => kind === 'name' ? `<span class="hz">${esc(o.name)}</span> <small class="muted">${esc(o.py)}</small>` : esc(o.m))}`;
+    bindMC(host, opts, opts.indexOf(r), fin);
+  } };
+}
+const radKey = i => D.rad.list[i].f + '|' + D.rad.list[i].pos;
+function radMark(i) { META.radSeen = META.radSeen || {}; META.radSeen[radKey(i)] = (META.radSeen[radKey(i)] || 0) + 1; }
+function startRadQuiz() { // seen radicals first, then the rest
+  const L = D.rad.list, seen = META.radSeen || {};
+  const order = [...shuffle(L.map((r, i) => i).filter(i => seen[radKey(i)])), ...shuffle(L.map((r, i) => i).filter(i => !seen[radKey(i)]))];
+  const tasks = order.slice(0, 12).map(i => { const q = Math.random(); return radTask(i, q < 0.4 ? 'guess' : q < 0.65 ? 'find' : q < 0.85 ? 'mean' : 'name'); });
+  startSession(shuffle(tasks), 'rad', { onDone: (pct, s) => { save(); doneScreen({ seal: '一目了然', title: '部首练习', sub: 'Spot the part, guess the meaning: that works on characters you have never seen.', stats: sesStats(s), cta: '部首 Back to radicals', href: '#radicals' }); } });
 }
 V.more = () => {
   const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#radicals', 'note', '部首', 'Radicals: sides, tops, bottoms'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
@@ -2557,6 +2574,7 @@ const ACT = {
   say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
   quit: () => { if (confirm('End this session? Progress so far is saved.')) endSession(); },
   reviews: () => startReviews(), weak: () => startWeak(),
+  radsheet: el => radSheet(+el.dataset.ri),
   radquiz: () => D.rad ? startRadQuiz() : toast('Radicals not loaded'),
   daily: () => startDaily(), sentences: () => startSentences(), convo: () => startConvo(), lab: el => startLab(el.dataset.id),
   lesson: el => { const l = D.lessons.get(el.dataset.id); if (l && lessonUnlocked(l)) startLesson(l); },
