@@ -360,6 +360,18 @@ header .back .ico{width:22px;height:22px;transform:rotate(180deg);stroke-width:2
 .ubar{display:block;height:3px;margin:7px 0 4px;border-radius:2px;background:var(--line);overflow:hidden}
 .ubar i{display:block;height:100%;background:var(--seal);border-radius:inherit}
 
+
+/* practice hub */
+.ptiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 14px 12px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);text-align:left;text-decoration:none;cursor:pointer;transition:transform .12s var(--ease)}
+.pt:active{transform:scale(.97)}
+.pt b{font:800 26px/1.1 var(--song);color:var(--seal);margin-bottom:4px}
+.pt span{font:700 14px var(--ui)}.pt small{font:500 12px var(--ui);color:var(--muted)}
+.pt.main{grid-column:1/-1;background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.pt.main b{color:var(--paper)}.pt.main small{color:color-mix(in srgb,var(--paper) 70%,transparent)}
+.lt-t{font:700 15px var(--ui);color:var(--seal)}
+.lt-bar{height:4px;margin:8px 0 4px;border-radius:2px;background:var(--line);overflow:hidden}.lt-bar i{display:block;height:100%;background:var(--seal);transition:width .25s linear}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -854,7 +866,7 @@ const pick = a => a[Math.random() * a.length | 0];
 const dayKey = (t = Date.now()) => { const d = new Date(t - 4 * 3600e3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const SKILLS = ['reading', 'writing', 'listening', 'speaking'];
 const POS = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb', pron: 'pronoun', num: 'number', mw: 'measure word', part: 'particle', conj: 'conjunction', prefix: 'prefix', phrase: 'phrase' };
-const SK_ZH = { reading: '读', writing: '写', listening: '听', speaking: '说', drill: '练' };
+const SK_ZH = { reading: '读', writing: '写', listening: '听', speaking: '说', drill: '练', sentence: '句' };
 const view = $('#view');
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
 
@@ -905,7 +917,7 @@ const save = () => DB.putMeta();
 function putCard(c) { CARDS.set(c.id, c); DB.putCards([c]); }
 
 // ---------------- data ----------------
-const D = { stages: [], units: [], unitById: new Map(), items: new Map(), chars: new Map(), texts: new Map(), ex: new Map(), lessons: new Map(), scen: new Map(), dict: new Map(), syl: {}, sylSet: null, mw: new Set(), sylP: new Map(), audio: null, audioWords: new Set(), audioSyl: new Set() };
+const D = { stages: [], units: [], unitById: new Map(), items: new Map(), chars: new Map(), texts: new Map(), ex: new Map(), lessons: new Map(), scen: new Map(), dict: new Map(), syl: {}, sylSet: null, mw: new Set(), sylP: new Map(), audio: null, audioWords: new Set(), audioSyl: new Set(), sent: new Map() };
 async function loadData() {
   const idx = await fetch('data/index.json').then(r => r.json());
   D.stages = idx.stages;
@@ -926,7 +938,8 @@ function addItem(it) {
 }
 function addUnit(u) {
   D.units.push(u); D.unitById.set(u.id, u);
-  for (const it of u.items || []) { it.unit = u.id; addItem(it); if (it.k === 'syl' && [...it.s].length === 1 && !D.sylP.has(it.s)) D.sylP.set(it.s, it.p); }
+  for (const it of u.items || []) { it.unit = u.id; addItem(it); if (it.k === 'syl' && [...it.s].length === 1 && !D.sylP.has(it.s)) D.sylP.set(it.s, it.p);
+    for (const e of it.ex || []) { const id = 'S.' + e.zh; if (!D.sent.has(id)) D.sent.set(id, { id, zh: e.zh, p: e.p, en: e.en, unit: u.id, word: it.id }); } }
   for (const [c, v] of Object.entries(u.chars || {})) if (!D.chars.has(c)) D.chars.set(c, v);
   for (const t of u.texts || []) { t.unit = u.id; D.texts.set(t.id, t); }
   for (const x of u.exercises || []) { x.unit = u.id; D.ex.set(x.id, x); }
@@ -1339,6 +1352,12 @@ function addItemCards(it) {
   for (const sk of skillsFor(it)) { const id = it.id + '|' + sk; if (!CARDS.has(id)) { const c = Core.newCard(id, sk); c.item = it.id; CARDS.set(id, c); made.push(c); } }
   DB.putCards(made); return made;
 }
+// a sentence card per word (its first example): heard, understood, said, written, built
+function addSentCards(items, spreadDays = 1) {
+  for (const it of items) { const e = (it.ex || [])[0]; if (!e) continue; const sid = 'S.' + e.zh, id = sid + '|sentence';
+    if (CARDS.has(id) || !D.sent.has(sid)) continue;
+    const c = Core.review({ ...Core.newCard(id, 'sentence'), item: sid }, 3); c.due = Date.now() + (4 + Math.random() * 24 * spreadDays) * 3600e3; putCard(c); }
+}
 function addExCard(x) { const id = x.id + '|drill'; if (!CARDS.has(id)) { const c = Core.newCard(id, 'drill'); c.item = x.id; putCard(c); } return CARDS.get(id); }
 const isDue = (c, t = Date.now()) => c.st > 0 && c.due <= t && !c.susp;
 function dueCards(ahead = 0) { const t = Date.now() + ahead; return [...CARDS.values()].filter(c => isDue(c, t)); }
@@ -1368,14 +1387,14 @@ function chooseKind(c, it, mode) {
   const sk = c.skill, s = c.st === 2 ? c.s : 0, first = c.reps === 0 && mode !== 'check' && mode !== 'exam';
   if (sk === 'drill') return 'drill';
   if (it.k === 'syl') return sk === 'listening' ? 'toneId' : 'shadow';
-  if (sk === 'reading') { if (first) return 'mcMeaning'; if ((it.ex || []).some(e => e.zh.includes(it.s))) { const r = Math.random(); if (r < 0.2) return 'cloze'; if (r < 0.32) return 'buildSentence'; } if (it.mw && s > 2 && Math.random() < 0.25) return 'mwFill'; if (it.ex && it.ex.length && s > 7 && Math.random() < 0.4) return 'sentMeaning'; return 'typePinyin'; }
+  if (sk === 'reading') { if (first) return 'mcMeaning'; if ((it.ex || []).some(e => e.zh.includes(it.s))) { const r = Math.random(); if (r < 0.2) return 'cloze'; if (r < 0.32) return 'buildSentence'; } if (it.mw && s > 2 && Math.random() < 0.25) return 'mwFill'; if (it.ex && it.ex.length && s > 7 && Math.random() < 0.3) return 'sentMeaning'; return s < 4 ? 'mcMeaning' : Math.random() < 0.7 ? 'flash' : 'typePinyin'; }
   if (sk === 'writing') {
     const one = [...it.s].filter(Core.isHan).length === 1, ch = D.chars.get(it.s);
     if (first) return one && ch && (ch.c || []).length >= 2 && Math.random() < 0.5 ? 'assemble' : 'trace';
     if (one && s < 7 && Math.random() < 0.25 && lookalikes(it).length >= 3) return 'pickChar';
     return 'handwrite';
   }
-  if (sk === 'listening') { if (first) return 'listenMC'; const r = Math.random(); if (it.ex && it.ex.length && r < 0.35) return s > 14 && r < 0.12 ? 'dictation' : 'listenSentence'; return r < 0.6 ? 'toneEar' : 'listenType'; }
+  if (sk === 'listening') { if (first) return 'listenMC'; const r = Math.random(); if (it.ex && it.ex.length && r < 0.35) return s > 14 && r < 0.12 ? 'dictation' : 'listenSentence'; return r < 0.85 ? 'listenMC' : 'listenType'; }
   if (first) return 'shadow';
   if (it.ex && it.ex.length && s > 14 && Math.random() < 0.3) return 'speakTranslate';
   return 'speakMeaning';
@@ -1472,6 +1491,7 @@ function renderTask() {
     return renderTask();
   }
   const c = CARDS.get(t.card) || t.tmpCard;
+  if (c && c.skill === 'sentence') { const sx = D.sent.get(c.item); return sx ? EXS(host, sx, res => finish(t, res), c) : skip(); }
   if (t.ex) { const x = D.ex.get(t.ex); return x ? exDrill(host, x, res => finish(t, res)) : skip(); }
   const it = D.items.get(t.item);
   if (!it || !c) return skip();
@@ -1698,6 +1718,14 @@ EX.toneId = (host, it, cb) => {
   setTimeout(() => say(it.s, 0.75), 200);
   bindMC(host, opts, opts.indexOf(right), cb, o => { const cit = ts.map(s => Core.markSyl(s.base, s.tone)).join(' '); return o === cit && cit !== right ? `That's how it's <i>written</i>. Spoken it changes: ${esc(right)} (tone sandhi).` : `You heard ${esc(right)}.`; });
 };
+EX.flash = (host, it, cb) => { // see the word, recall the meaning, then check yourself
+  host.innerHTML = `<p class="muted center">What does it mean? Think, then check.</p>${itemHead(it, { py: 'hide' })}<button class="btn pri block" data-r="show">Show meaning</button>`;
+  $('[data-r=show]', host).onclick = () => { $('[data-r=show]', host).remove(); say(it.s);
+    host.insertAdjacentHTML('beforeend', `<div class="card center"><div class="tc" style="font-size:18px">${pyHTML(it.s, it.p)}</div><div style="font-size:19px;margin-top:4px">${esc(it.en)}</div></div><div class="grid2"><button class="btn" data-r="n">${ic('close')} Didn't know</button><button class="btn pri" data-r="y">${ic('check')} Knew it</button></div>`);
+    $('[data-r=n]', host).onclick = () => cb({ ok: false, self: true, noAudio: true, why: 'Marked as not known.' });
+    $('[data-r=y]', host).onclick = () => cb({ ok: true, self: true, noAudio: true });
+  };
+};
 EX.speakSyl = EX.shadow;
 EX.toneEar = EX.toneId; // hear the word, name its tones (works for any word, not just syllables)
 const exWith = it => (it.ex || []).filter(e => e.zh.includes(it.s));
@@ -1726,6 +1754,55 @@ EX.speakSentence = (host, it, cb) => {
 };
 
 // --- authored drills ---
+// sentence card: hear it → meaning; English → say it (or type pinyin); dictation; build from tiles
+const sentPool = sx => { const all = [...D.sent.values()].filter(x => x.en !== sx.en); const near = all.filter(x => x.unit === sx.unit); return near.length >= 3 ? near : all; };
+function EXS(host, sx, cb, c) {
+  const st = c && c.st === 2 ? c.s : 0, r = Math.random(), rate = Math.max(0.85, S().rate);
+  const kind = !c || c.reps <= 1 ? 'hear' : r < 0.32 ? 'hear' : r < 0.7 ? 'say' : st > 6 && r < 0.84 ? 'dict' : 'build';
+  const reveal = `<div class="hz tc" style="font-size:20px;margin:6px 0">${rubyHTML(sx.zh, sx.p)} <button class="lplay" data-act="say" data-t="${esc(sx.zh)}" aria-label="Play">${ic('play')}</button></div><div class="small muted">${esc(sx.en)}</div>`;
+  const done = res => cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + reveal });
+  if (kind === 'hear') {
+    const opts = shuffle([sx, ...sample(sentPool(sx), 3)]);
+    host.innerHTML = `<p class="muted center">句子 · What does it mean?</p>${audioBtns(sx.zh, rate)}${mcHTML(opts, o => esc(o.en))}`;
+    setTimeout(() => say(sx.zh, rate), 200);
+    return bindMC(host, opts, opts.indexOf(sx), done);
+  }
+  if (kind === 'say') {
+    let peek = false;
+    host.innerHTML = `<p class="muted center">句子 · Say it in Chinese</p><div class="card center" style="font-size:20px">${esc(sx.en)}</div><div data-r="sp"></div>
+      <div class="row" style="justify-content:center"><button class="linkbtn" data-r="type">Type pinyin instead</button><button class="linkbtn" data-r="peek">Show answer</button></div><div data-r="ty"></div>`;
+    speakPanel($('[data-r=sp]', host), { zh: sx.zh, p: sx.p }, res => done(peek ? { ...res, ok: false, why: 'You looked at the answer.' } : { ...res, ok: res.self ? res.ok : (res.sim || 0) >= 0.7 }));
+    $('[data-r=peek]', host).onclick = e => { peek = true; e.target.outerHTML = `<div class="hz center" style="font-size:20px">${esc(sx.zh)}</div>`; };
+    $('[data-r=type]', host).onclick = e => { e.target.remove(); const ty = $('[data-r=ty]', host); ty.innerHTML = pyInput(ty, 'pinyin: wo3 jiao4 …'); bindPy(ty, v => done(peek ? { ok: false, why: 'You looked at the answer.' } : gradePy({ s: sx.zh, p: sx.p }, v))); };
+    return;
+  }
+  if (kind === 'dict') {
+    host.innerHTML = `<p class="muted center">句子 · Write what you hear</p>${audioBtns(sx.zh, rate)}<input type="text" data-r="in" placeholder="汉字…" autocomplete="off"><button class="btn pri block" data-r="go">Check</button>`;
+    setTimeout(() => say(sx.zh, rate), 200);
+    const go = () => { const v = $('[data-r=in]', host).value; if (!v.trim()) return; const sim = Core.charSim(v, sx.zh); done({ ok: sim >= 0.85, grade: sim === 1 ? 3 : sim >= 0.85 ? 2 : 1, why: `<span class="hz" style="font-size:20px">${Core.charDiff(v, sx.zh).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span>` }); };
+    $('[data-r=go]', host).onclick = go; $('[data-r=in]', host).onkeydown = e => e.key === 'Enter' && go();
+    return;
+  }
+  exDrill(host, { type: 'order', zh: sx.zh, p: sx.p, en: sx.en }, done);
+}
+// conversation turn: hear a question, answer it (voice first, choices if you can't)
+function exTurn(host, n, cb) {
+  const good = n.opts.filter(o => (o.score ?? 2) >= Math.max(...n.opts.map(x => x.score ?? 2)));
+  host.innerHTML = `<p class="muted center">对话 · Listen and answer</p>${audioBtns(n.npc, Math.max(0.9, S().rate))}<button class="linkbtn" data-r="txt">Show the question</button><div data-r="q"></div><div data-r="sp"></div><button class="linkbtn" data-r="mc">Choose an answer instead</button><div data-r="opts"></div>`;
+  setTimeout(() => say(n.npc), 200);
+  const model = `Q: <span class="hz">${esc(n.npc)}</span> · ${esc(n.en)}<br>A: ${good.map(o => `<span class="hz">${esc(o.zh)}</span> (${esc(o.en)})`).join(' / ')}`;
+  $('[data-r=txt]', host).onclick = e => { e.target.remove(); $('[data-r=q]', host).innerHTML = `<div class="card center hz" style="font-size:19px">${rubyHTML(n.npc, n.p)}</div>`; };
+  speakPanel($('[data-r=sp]', host), { zh: good[0].zh, p: good[0].p }, r => {
+    if (r.self) return cb({ ok: r.ok, self: true, noAudio: true, why: model });
+    const sim = Math.max(...good.map(o => Core.charSim(r.heard || '', o.zh)));
+    cb({ ok: sim >= 0.6, grade: sim >= 0.85 ? 3 : sim >= 0.6 ? 2 : 1, noAudio: true, why: `You said: <span class="hz">${esc(r.heard || '—')}</span><br>${model}` });
+  });
+  $('[data-r=mc]', host).onclick = e => { e.target.remove();
+    const right = good[0], others = sample([...D.scen.values()].flatMap(sc => Object.values(sc.nodes)).flatMap(x => x.opts || []).filter(o => !n.opts.includes(o) && o.zh !== right.zh), 3), opts = shuffle([right, ...others]);
+    $('[data-r=opts]', host).innerHTML = mcHTML(opts, o => `<span class="hz">${esc(o.zh)}</span>`);
+    bindMC($('[data-r=opts]', host), opts, opts.indexOf(right), res => cb({ ...res, grade: res.ok ? 2 : 1, noAudio: true, why: model }));
+  };
+}
 function exDrill(host, x, cb) {
   const why = x.why ? esc(x.why) : '';
   const T = x.type;
@@ -1830,7 +1907,7 @@ function startLesson(l) {
   const tasks = [];
   dayStat().new += items.filter(it => !CARDS.has(it.id + '|' + skillsFor(it)[0])).length;
   items.forEach(addItemCards);
-  const T = (it, sk, kind) => { const c = CARDS.get(it.id + '|' + sk); return c ? { ...cardTask(c, 'lesson'), kind } : null; };
+  const T = (it, sk, kind) => { const c = kind && CARDS.get(it.id + '|' + sk); return c ? { ...cardTask(c, 'lesson'), kind } : null; };
   const words0 = items.filter(it => it.k !== 'syl');
   // 0. the goal: what you'll be able to do at the end
   tasks.push({ kind: 'info', html: `<p class="muted center">本课目标 · This lesson</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:6px">${esc(l.title)}</h2>
@@ -1849,7 +1926,9 @@ function startLesson(l) {
   const practice = [], words = items.filter(it => it.k !== 'syl'), withEx = shuffle(words.filter(it => (it.ex || []).length));
   for (const it of items) {
     if (it.k === 'syl') { practice.push(T(it, 'speaking', 'shadow'), T(it, 'listening', 'listenType')); continue; }
-    practice.push(T(it, 'reading', exWith(it).length ? 'cloze' : 'typePinyin'), T(it, 'listening', 'toneEar'), T(it, 'writing', 'trace'));
+    // meaning in context, meaning by ear, and saying it yourself; trace single characters (longer words get written in the final round)
+    practice.push(T(it, 'reading', exWith(it).length ? 'cloze' : 'mcMeaning'), T(it, 'listening', 'listenMC'), T(it, 'speaking', it.k === 'rad' ? null : 'speakMeaning'));
+    if ([...it.s].filter(Core.isHan).length === 1) practice.push(T(it, 'writing', 'trace'));
     const ch = it.k === 'char' && D.chars.get(it.s); if (ch && (ch.c || []).length >= 2) practice.push(T(it, 'writing', 'assemble'));
   }
   withEx.slice(0, 3).forEach(it => practice.push(T(it, 'listening', 'listenSentence')));
@@ -1859,7 +1938,7 @@ function startLesson(l) {
   for (const xid of l.ex || []) { const x = D.ex.get(xid); if (x) tasks.push(cardTask(addExCard(x), 'lesson')); }
   // 4. from memory: meaning → Chinese, missed words first (built when reached, from this session's mistakes)
   if (words0.length) tasks.push({ kind: 'recall', pool: words0.map(it => it.id) });
-  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
+  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); addSentCards(items); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
 }
 function examTasks(items, exs, n) {
   const tasks = [];
@@ -1898,6 +1977,37 @@ function startReviews(limit = 200) {
   if (!tasks.length) return toast('Nothing due');
   startSession(tasks, 'review');
 }
+function startDaily() { // one session: what's due (words and sentences), plus a few of your mistakes
+  const due = dueCards().sort((a, b) => a.due - b.due).slice(0, 25);
+  const dueIds = new Set(due.map(c => c.id));
+  const weak = Object.entries(META.weak).sort((a, b) => b[1].n - a[1].n).map(e => CARDS.get(e[0])).filter(c => c && !dueIds.has(c.id)).slice(0, 5);
+  const tasks = shuffle([...due.map(c => cardTask(c, 'review')), ...weak.map(c => ({ ...cardTask(c, 'review'), card: null, tmpCard: c }))]);
+  if (!tasks.length) return startSentences();
+  startSession(tasks, 'review');
+}
+function startSentences() { // due sentences first; nothing due → practise learned ones off the schedule
+  const cs = [...CARDS.values()].filter(c => c.skill === 'sentence');
+  if (!cs.length) return toast('Finish a lesson first: its sentences land here');
+  const due = cs.filter(c => isDue(c));
+  if (due.length) return startSession(shuffle(due).slice(0, 20).map(c => cardTask(c, 'review')), 'review');
+  startSession(sample(cs.filter(c => c.st > 0), 15).map(c => ({ ...cardTask(c, 'cram'), card: null, tmpCard: { ...c, reps: 3 } })), 'cram');
+}
+function startConvo() { // ten questions from the role-plays you've reached, heard not read
+  const nodes = [...D.scen.values()].filter(sc => unitUnlocked(D.unitById.get(sc.unit))).flatMap(sc => Object.values(sc.nodes)).filter(n => n.npc && (n.opts || []).length && /[？?吗呢]/.test(n.npc));
+  if (!nodes.length) return toast('Reach a unit with a role-play first');
+  startSession(sample(nodes, 10).map(n => ({ kind: 'custom', run: (host, cb) => exTurn(host, n, cb) })), 'convo', { onDone: (pct, s) => doneScreen({ seal: '对答如流', title: '对话练习', sub: 'Questions heard and answered. Speaking from memory scores highest.', stats: sesStats(s), cta: '再来 Again', href: '#today' }) });
+}
+function startLab(textId) { // a text line by line, audio only: catch the meaning, then see it
+  const texts = [...D.texts.values()].filter(t => t.lines.length >= 3 && unitUnlocked(D.unitById.get(t.unit)));
+  const t = D.texts.get(textId) || pick(texts); if (!t) return toast('No texts reached yet');
+  const others = [...D.texts.values()].flatMap(x => x.lines).filter(l => l.en);
+  startSession(t.lines.filter(l => l.en).map(l => ({ kind: 'custom', run: (host, cb) => {
+    const opts = shuffle([l, ...sample(others.filter(o => o.en !== l.en && o !== l), 3)]), r = Math.max(0.9, S().rate);
+    host.innerHTML = `<p class="muted center">听力 · ${esc(t.title)} · no text, just listen</p>${audioBtns(l.zh, r)}${mcHTML(opts, o => esc(o.en))}`;
+    setTimeout(() => say(l.zh, r), 200);
+    bindMC(host, opts, opts.indexOf(l), res => cb({ ...res, noAudio: true, why: `<div class="hz tc" style="font-size:20px">${rubyHTML(l.zh, l.p)}</div>` }));
+  } })), 'lab', { onDone: (pct, s) => doneScreen({ seal: '耳聪目明', title: '听力完成', sub: `${esc(t.title)}: ${pct}% understood by ear.`, stats: sesStats(s), cta: '读全文 Read the text', href: '#text/' + t.id }) });
+}
 function startWeak() {
   const ids = Object.entries(META.weak).sort((a, b) => b[1].n - a[1].n).map(e => e[0]).filter(id => CARDS.has(id)).slice(0, 40);
   if (!ids.length) return toast('No weak items. Nice.');
@@ -1915,6 +2025,7 @@ const V = {};
 const ph = (zh, en) => `<section class="uhead"><h2 class="display">${zh}</h2><p class="en">${en}</p></section>`;
 V.today = () => {
   const due = dueCards(), by = {}; due.forEach(c => by[c.skill] = (by[c.skill] || 0) + 1);
+  const sentDue = due.filter(c => c.skill === 'sentence').length;
   const st = dayStat(), nl = nextLesson(), weakN = Object.keys(META.weak).length, newLeft = Math.max(0, S().newLimit - st.new);
   const nu = nl && D.unitById.get(nl.unit);
   const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言' };
@@ -1930,9 +2041,16 @@ V.today = () => {
     <div class="overview">${dialSVG(st.rev, S().goal)}
       <dl class="facts"><div><dt>待复习 Due</dt><dd>${due.length}</dd></div><div><dt>连续 Streak</dt><dd>${live ? sk.n : 0}<small>天</small></dd></div><div><dt>新词 New</dt><dd>${st.new}<small>/ ${S().newLimit}</small></dd></div></dl></div>
     ${cta}
-    <p class="note-s">${due.length ? `${['reading', 'writing', 'listening', 'speaking', 'drill'].filter(k => by[k]).map(k => `${SK_ZH[k]} ${by[k]}`).join('　')}. Reviews come before new lessons.` : `The streak counts once the goal is met with nothing due.`}</p></section>
+    <p class="note-s">${due.length ? `${['reading', 'writing', 'listening', 'speaking', 'sentence', 'drill'].filter(k => by[k]).map(k => `${SK_ZH[k]} ${by[k]}`).join('　')}. Reviews come before new lessons.` : `The streak counts once the goal is met with nothing due.`}</p></section>
   ${reads.length ? `<h3>读一读 · Read</h3><div class="hscroll">${reads.map(t => `<a class="hcard" data-w="${esc([...t.title].find(Core.isHan) || '')}" href="#text/${t.id}"><span>${kinds[t.kind] || t.kind}</span><b class="hz">${esc(t.title)}</b></a>`).join('')}</div>` : ''}
-  <h3>练习 · Practice</h3><div class="grid2"><a class="btn" href="#mistakes">错题本 ${weakN}</a><button class="btn" data-act="cramsel">突击 Cram</button></div>
+  <h3>练习 · Practice</h3><div class="ptiles">
+    <button class="pt main" data-act="daily"><b>练</b><span>每日练习 · Daily mix</span><small>${due.length ? `${due.length} due` : 'sentences'}${weakN ? ` + ${Math.min(5, weakN)} mistake${weakN > 1 ? "s" : ""}` : ''}</small></button>
+    <button class="pt" data-act="sentences"><b>句</b><span>句子 · Sentences</span><small>${sentDue ? sentDue + ' due' : 'hear, say, write'}</small></button>
+    <button class="pt" data-act="convo"><b>答</b><span>对话 · Conversation</span><small>hear a question, answer it</small></button>
+    <button class="pt" data-act="lab"><b>听</b><span>听力 · Listening</span><small>a text, audio only</small></button>
+    <a class="pt" href="#lightning"><b>闪</b><span>闪电 · 60 seconds</span><small>${META.progress.lightning ? 'best ' + META.progress.lightning : 'hear it, know it'}</small></a>
+    <a class="pt" href="#mistakes"><b>错</b><span>错题本 · Mistakes</span><small>${weakN} to fix</small></a>
+    <button class="pt" data-act="cramsel"><b>突</b><span>突击 · Cram</span><small>a whole unit</small></button></div>
   <h3>未来七天 · Next 7 days</h3>${forecastHTML(7)}`;
 };
 function forecastHTML(days) {
@@ -1992,7 +2110,7 @@ V.text = (id, lessonId) => {
   <div class="row chips"><button class="chip ${READ.py ? 'on' : ''}" data-act="rpy">拼音</button><button class="chip ${READ.tr ? 'on' : ''}" data-act="rtr">译文</button><button class="chip" data-act="rall">${ic('play')} 全文</button><button class="chip" data-act="rall" data-r="0.6">${ic('play')} 慢</button><button class="chip" data-act="speed">${ic('timer')} 速读</button></div>
   <div class="reader ${poem ? 'kai center' : ''} ${READ.py ? '' : 'nopy'} ${S().toneColors ? 'tc' : ''}" id="rd">${t.lines.map((l, i) => `<div class="ln" data-li="${i}">${rubyHTML(l.zh, l.p)} <button class="lplay" data-act="say" data-t="${esc(l.zh)}" aria-label="Play line">${ic('play')}</button></div><div class="tr" ${READ.tr ? '' : 'hidden'}>${esc(l.en)}${l.mod ? `<br>白话: ${esc(l.mod)}` : ''}</div>`).join('')}</div>
   ${(t.notes || []).length ? `<details class="card"><summary>${ic('note')}注释 Notes</summary>${t.notes.map(n => `<p class="small">${esc(n)}</p>`).join('')}</details>` : ''}
-  <div class="tools">${poem ? `<button data-act="recite" data-id="${t.id}"><b>背诵</b><span>Recite</span></button>` : ''}<button data-act="writeText" data-id="${t.id}"><b>默写</b><span>Write from memory</span></button><button data-act="tquiz" data-id="${t.id}" data-l="${lessonId || ''}"><b>理解</b><span>Questions</span></button></div>
+  <div class="tools">${poem ? `<button data-act="recite" data-id="${t.id}"><b>背诵</b><span>Recite</span></button>` : ''}<button data-act="lab" data-id="${t.id}"><b>听</b><span>Listen only</span></button><button data-act="writeText" data-id="${t.id}"><b>默写</b><span>Write from memory</span></button><button data-act="tquiz" data-id="${t.id}" data-l="${lessonId || ''}"><b>理解</b><span>Questions</span></button></div>
   ${lessonId ? `<button class="btn pri block" data-act="tdone" data-id="${t.id}" data-l="${lessonId}">完成本课 Finish lesson</button>` : ''}`;
 };
 function textQuiz(t, lessonId) {
@@ -2132,9 +2250,32 @@ V.mistakes = () => { // 错题本: every card you keep missing, why, and one tap
   const rows = Object.entries(META.weak).map(([id, w]) => ({ id, w, c: CARDS.get(id) })).filter(r => r.c).sort((a, b) => b.w.n - a.w.n || b.w.t - a.w.t);
   view.innerHTML = `<section class="uhead"><p class="meta">错题本</p><h2 class="display">Mistakes</h2><p class="en">What you keep missing, and why</p></section>
     <p class="uintro">A card leaves this list after three right answers in a row. Practising here doesn't change your review schedule, so drill as often as you like.</p>
-    ${rows.length ? `<button class="btn block cta" data-act="weak">练习全部 Practise all ${rows.length}</button><div class="list">${rows.map(({ id, w, c }) => { const it = D.items.get(c.item) || D.ex.get(c.item) || {};
+    ${rows.length ? `<button class="btn block cta" data-act="weak">练习全部 Practise all ${rows.length}</button><div class="list">${rows.map(({ id, w, c }) => { const it = D.items.get(c.item) || D.ex.get(c.item) || D.sent.get(c.item) || {};
       return `<a href="${D.items.has(c.item) ? '#entry/' + encodeURIComponent(c.item) : 'javascript:void 0'}" class="li"><span class="hz" style="min-width:2.4em">${esc(it.s || it.zh || it.q || '')}</span><span class="grow"><span class="small"><b>${SK_ZH[c.skill]}</b> ${esc(c.skill)} · missed ${w.n}× · ${w.ok}/3 back on track</span>${w.why ? `<br><span class="small muted">${esc(w.why)}</span>` : ''}</span></a>`; }).join('')}</div>`
     : `<div class="card center"><p>No mistakes on file.</p><p class="small muted">Anything you get wrong in lessons or reviews lands here with the reason.</p></div>`}`;
+};
+V.lightning = () => { // 60 seconds: hear a word you know, tap its meaning
+  const pool = [...new Set([...CARDS.values()].filter(c => c.st > 0 && (c.skill === 'reading' || c.skill === 'listening')).map(c => c.item))].map(id => D.items.get(id)).filter(it => it && it.k !== 'syl' && it.k !== 'rad');
+  const best = META.progress.lightning || 0;
+  view.innerHTML = `${ph('闪电', 'Lightning round')}<p class="uintro">60 seconds. Hear a word you've learned, tap what it means. Speed builds the instant recognition you need when people talk.</p>
+    ${pool.length < 6 ? `<div class="card center">Learn at least 6 words first.</div>` : `<div class="card center"><div class="big md">${best}</div><p class="small muted">your best</p></div><button class="btn block cta" data-r="go">开始 Start</button>`}<div id="lt"></div>`;
+  const go = $('[data-r=go]'); if (!go) return;
+  go.onclick = () => {
+    const host = $('#lt'); let score = 0, miss = 0, end = Date.now() + 60000, timer;
+    view.querySelectorAll('.card,.uintro,[data-r=go]').forEach(e => e.remove());
+    const next = () => {
+      const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      if (!left) { clearInterval(timer); const nb = score > best; if (nb) { META.progress.lightning = score; save(); }
+        host.innerHTML = `<div class="card center"><div class="big md">${score}</div><p>${nb ? '新纪录！ New best' : `best ${best}`} · ${miss} missed</p></div><button class="btn block cta" data-r="again">再来 Again</button><a class="btn block" href="#today">Done</a>`;
+        $('[data-r=again]', host).onclick = () => V.lightning(); return; }
+      const it = pick(pool), opts = shuffle([it, ...distract(it, 3)]);
+      host.innerHTML = `<div class="row"><b class="grow" style="font:800 28px var(--song)">${score}</b><span class="lt-t" data-r="t">${left}s</span></div><div class="lt-bar"><i style="width:${left / 60 * 100}%"></i></div>${audioBtns(it.s)}${mcHTML(opts, o => esc(gloss(o)))}`;
+      say(it.s);
+      $$('.opt', host).forEach(b => b.onclick = () => { const ok = opts[+b.dataset.i] === it; b.classList.add(ok ? 'ok' : 'no'); if (!ok) { miss++; $$('.opt', host)[opts.indexOf(it)].classList.add('ok'); } else score++; chime(ok); $$('.opt', host).forEach(x => x.disabled = true); setTimeout(next, ok ? 250 : 900); });
+    };
+    timer = setInterval(() => { const t = $('[data-r=t]'); const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); if (t) t.textContent = left + 's'; const bar = $('.lt-bar i'); if (bar) bar.style.width = left / 60 * 100 + '%'; if (!left) next(); }, 250);
+    next();
+  };
 };
 V.more = () => {
   const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
@@ -2174,7 +2315,7 @@ V.dash = () => {
     <div class="legend">${SKILLS.map((sk, i) => `<div><i style="background:${RINGC[i]}"></i><b>${SK_ZH[sk]}</b><span>${known(sk)} learned<br>${mature(sk)} solid</span></div>`).join('')}</div></div>
   <div class="card"><b>Tone accuracy (speaking)</b><div class="grid4" style="margin-top:8px">${tone}</div>${conf ? `<p class="small muted">Most common confusions: ${conf}</p>` : ''}</div>
   <h3>Reviews due, next 14 days</h3>${forecastHTML(14)}
-  <div class="card"><b>Weakest items</b><div class="list">${weakest.map(c => { const it = D.items.get(c.item) || D.ex.get(c.item) || {}; return `<a class="li" href="${D.items.has(c.item) ? '#entry/' + encodeURIComponent(c.item) : 'javascript:void 0'}"><span class="hz">${esc(it.s || it.q || it.w || c.item)}</span><span class="grow small">${SK_ZH[c.skill]} · ${c.lapses} lapses · ${c.st === 2 ? Math.round(c.s) + 'd' : 'learning'}</span>${c.leech ? ic('alert') : ''}</a>`; }).join('') || '<p class="small muted">Nothing yet.</p>'}</div></div>
+  <div class="card"><b>Weakest items</b><div class="list">${weakest.map(c => { const it = D.items.get(c.item) || D.ex.get(c.item) || D.sent.get(c.item) || {}; return `<a class="li" href="${D.items.has(c.item) ? '#entry/' + encodeURIComponent(c.item) : 'javascript:void 0'}"><span class="hz">${esc(it.s || it.zh || it.q || it.w || c.item)}</span><span class="grow small">${SK_ZH[c.skill]} · ${c.lapses} lapses · ${c.st === 2 ? Math.round(c.s) + 'd' : 'learning'}</span>${c.leech ? ic('alert') : ''}</a>`; }).join('') || '<p class="small muted">Nothing yet.</p>'}</div></div>
   <div class="card small muted">Streak ${META.streak.n} · ${cs.length} cards · ${Object.keys(META.progress.lessons).length} lessons done</div>`;
 };
 // 拼音总览: every initial and final, each played in all four tones, from the syllable table + recordings
@@ -2320,6 +2461,7 @@ const ACT = {
   say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
   quit: () => { if (confirm('End this session? Progress so far is saved.')) endSession(); },
   reviews: () => startReviews(), weak: () => startWeak(),
+  daily: () => startDaily(), sentences: () => startSentences(), convo: () => startConvo(), lab: el => startLab(el.dataset.id),
   lesson: el => { const l = D.lessons.get(el.dataset.id); if (l && lessonUnlocked(l)) startLesson(l); },
   check: el => startCheckpoint(D.unitById.get(el.dataset.id)), exam: el => startStageExam(+el.dataset.n),
   cram: el => startCram(el.dataset.id),
@@ -2405,6 +2547,7 @@ $('#back').onclick = () => history.length > 1 ? history.back() : go('#today');
   META = meta ? Object.assign(defaultMeta(), meta, { settings: Object.assign(defaultMeta().settings, meta.settings) }) : defaultMeta();
   applyTheme(); TTS.pick();
   try { await loadData(); } catch (e) { view.innerHTML = `<div class="card">Could not load course data (${esc(e.message)}). Open the app through a web server (https or localhost), not as a file.</div>`; return; }
+  addSentCards([...CARDS.values()].filter(c => c.skill === 'reading' && c.st > 0).map(c => D.items.get(c.item)).filter(Boolean), 5);
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   route();
