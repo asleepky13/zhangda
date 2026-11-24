@@ -372,6 +372,26 @@ header .back .ico{width:22px;height:22px;transform:rotate(180deg);stroke-width:2
 .lt-t{font:700 15px var(--ui);color:var(--seal)}
 .lt-bar{height:4px;margin:8px 0 4px;border-radius:2px;background:var(--line);overflow:hidden}.lt-bar i{display:block;height:100%;background:var(--seal);transition:width .25s linear}
 
+
+/* radicals */
+.pos{width:22px;height:22px;flex:none}.pos .pb{fill:none;stroke:var(--muted);stroke-width:1.2;opacity:.6}.pos .pf{fill:var(--seal);opacity:.85}
+.radkey{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:4px 0 16px;text-align:center}
+.radkey div{display:flex;flex-direction:column;align-items:center;gap:3px}.radkey .pos{width:30px;height:30px}
+.radkey b{font:800 18px var(--song)}.radkey span{font:600 10.5px var(--ui);color:var(--muted)}
+.radgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin:10px 0 20px}
+.rad{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:12px 6px 10px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;transition:transform .12s var(--ease)}
+.rad:active{transform:scale(.96)}.rad .pos{position:absolute;top:8px;left:8px;width:16px;height:16px}
+.rad b{font:700 34px/1.25 var(--hz)}.rad span{font:700 13px var(--song)}.rad small{font:500 11px/1.3 var(--ui);color:var(--muted);text-align:center}
+.radhead{display:flex;align-items:center;gap:14px}.radhead>b{font:700 54px/1 var(--hz)}.radhead .pos{width:34px;height:34px}
+.radhead div b{display:block;font:800 22px var(--song)}.radhead div span{font:600 13px var(--ui);color:var(--muted)}
+.radm{margin:10px 0 2px;font:700 17px var(--ui)}
+.radlike{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--seal) 7%,transparent);font-size:13.5px}
+.radex .rx{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.radex .rx>b{font:700 30px var(--hz);min-width:1.2em}.radex small{color:var(--muted)}
+.radknown{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:24px}
+.radq{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0 16px}.radq b{font:700 72px/1 var(--hz)}.radq .pos{width:40px;height:40px}
+.radlink{color:var(--seal);text-decoration:none;font-weight:600}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -920,6 +940,7 @@ function putCard(c) { CARDS.set(c.id, c); DB.putCards([c]); }
 const D = { stages: [], units: [], unitById: new Map(), items: new Map(), chars: new Map(), texts: new Map(), ex: new Map(), lessons: new Map(), scen: new Map(), dict: new Map(), syl: {}, sylSet: null, mw: new Set(), sylP: new Map(), audio: null, audioWords: new Set(), audioSyl: new Set(), sent: new Map() };
 async function loadData() {
   const idx = await fetch('data/index.json').then(r => r.json());
+  D.rad = await fetch('data/radicals.json').then(r => r.json()).catch(() => null);
   D.stages = idx.stages;
   const files = idx.stages.flatMap(s => s.units);
   const units = await Promise.all(files.map(f => fetch('data/' + f).then(r => r.json()).catch(e => { console.warn('unit failed', f, e); return null; })));
@@ -1576,7 +1597,7 @@ function exIntro(host, it) {
     <div class="qprompt center">${esc(it.en)}</div>${it.zh ? `<div class="center muted">${esc(it.zh)}</div>` : ''}
     <div class="center">${it.pos ? `<span class="tag">${esc(POS[it.pos] || it.pos)}</span>` : ''}${it.mw ? `<span class="tag">量词 ${esc(it.mw)}</span>` : ''}${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}${it.hsk ? `<span class="tag">HSK ${it.hsk}</span>` : ''}</div>
     ${it.k !== 'syl' ? `<div class="center" data-r="anim" style="margin-top:8px"></div>` : ''}
-    ${chs.map(c => { const v = D.chars.get(c); return v ? `<p class="small"><b class="hz" style="font-size:20px">${c}</b> ${esc(v.p)} · ${esc(v.m)}${v.c && v.c.length ? ` · ${esc(v.c.join(' + '))}` : ''}${v.r ? ` · 部首 ${esc(v.r)}` : ''}<br><span class="muted">${esc(v.h || '')}</span></p>` : ''; }).join('')}
+    ${chs.map(c => { const v = D.chars.get(c); return v ? `<p class="small"><b class="hz" style="font-size:20px">${c}</b> ${esc(v.p)} · ${esc(v.m)}${v.c && v.c.length ? ` · ${esc(v.c.join(' + '))}` : ''}${v.r ? ` · ${radLink(v)}` : ''}<br><span class="muted">${esc(v.h || '')}</span></p>` : ''; }).join('')}
     ${it.note ? `<p class="small">${ic('hint')} ${esc(it.note)}</p>` : ''}
     ${(it.ex || []).map(e => `<div class="card" style="margin:6px 0"><div class="hz tc" style="font-size:19px">${rubyHTML(e.zh, e.p)}</div><div class="small muted">${esc(e.en)}</div><button class="btn sm" data-act="say" data-t="${esc(e.zh)}">${ic('play')}</button></div>`).join('')}
     ${it.col && it.col.length ? `<p class="small">搭配: ${it.col.map(esc).join(' · ')}</p>` : ''}
@@ -2049,6 +2070,7 @@ V.today = () => {
     <button class="pt" data-act="convo"><b>答</b><span>对话 · Conversation</span><small>hear a question, answer it</small></button>
     <button class="pt" data-act="lab"><b>听</b><span>听力 · Listening</span><small>a text, audio only</small></button>
     <a class="pt" href="#lightning"><b>闪</b><span>闪电 · 60 seconds</span><small>${META.progress.lightning ? 'best ' + META.progress.lightning : 'hear it, know it'}</small></a>
+    <a class="pt" href="#radicals"><b>部</b><span>部首 · Radicals</span><small>sides, tops, bottoms</small></a>
     <a class="pt" href="#mistakes"><b>错</b><span>错题本 · Mistakes</span><small>${weakN} to fix</small></a>
     <button class="pt" data-act="cramsel"><b>突</b><span>突击 · Cram</span><small>a whole unit</small></button></div>
   <h3>未来七天 · Next 7 days</h3>${forecastHTML(7)}`;
@@ -2237,7 +2259,7 @@ V.entry = id => {
     <div class="center" style="font-size:19px;margin-top:6px">${esc(it.en)}</div>${it.zh ? `<div class="center muted">${esc(it.zh)}</div>` : ''}
     <div class="center">${it.pos ? `<span class="tag">${esc(POS[it.pos] || it.pos)}</span>` : ''}${it.mw ? `<span class="tag">量词 ${esc(it.mw)}</span>` : ''}${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}${it.hsk ? `<span class="tag">HSK ${it.hsk}</span>` : ''}</div>
     <div class="center" data-r="anim"></div><p class="center small muted">tap a character to replay strokes</p></div>
-    ${chs.map(c => { const v = D.chars.get(c) || {}; const fam = family(c); return `<div class="card"><div class="row"><span class="big sm" style="margin:0">${c}</span><span class="grow">${esc(v.p || '')} · ${esc(v.m || '')}${v.t && v.t !== c ? ` · 繁 ${esc(v.t)}` : ''}<br><span class="small muted">${v.r ? '部首 ' + esc(v.r) + ' · ' : ''}${esc((v.c || []).join(' + '))}</span></span></div>${v.h ? `<p class="small">${ic('hint')} ${esc(v.h)}</p>` : ''}${fam.length ? `<p class="small">词族: ${fam.map(f => `<a href="#entry/${encodeURIComponent(f.id)}" class="hz">${esc(f.s)}</a>`).join(' · ')}</p>` : ''}</div>`; }).join('')}
+    ${chs.map(c => { const v = D.chars.get(c) || {}; const fam = family(c); return `<div class="card"><div class="row"><span class="big sm" style="margin:0">${c}</span><span class="grow">${esc(v.p || '')} · ${esc(v.m || '')}${v.t && v.t !== c ? ` · 繁 ${esc(v.t)}` : ''}<br><span class="small muted">${esc((v.c || []).join(' + '))}</span>${v.r ? `<br>${radLink(v)}` : ''}</span></div>${v.h ? `<p class="small">${ic('hint')} ${esc(v.h)}</p>` : ''}${fam.length ? `<p class="small">词族: ${fam.map(f => `<a href="#entry/${encodeURIComponent(f.id)}" class="hz">${esc(f.s)}</a>`).join(' · ')}</p>` : ''}</div>`; }).join('')}
     ${(it.ex || []).length ? `<div class="card"><b>例句</b>${it.ex.map(e => `<div style="margin:8px 0"><div class="hz tc" style="font-size:18px">${rubyHTML(e.zh, e.p)} <button class="btn sm ic" data-act="say" data-t="${esc(e.zh)}">${ic('play')}</button></div><div class="small muted">${esc(e.en)}</div></div>`).join('')}</div>` : ''}
     ${it.col && it.col.length ? `<div class="card small"><b>搭配</b> ${it.col.map(esc).join(' · ')}</div>` : ''}
     ${it.note ? `<div class="card small">${ic('hint')} ${esc(it.note)}</div>` : ''}
@@ -2277,8 +2299,82 @@ V.lightning = () => { // 60 seconds: hear a word you know, tap its meaning
     next();
   };
 };
+// ---------------- 部首: where a part sits, what it's called, what it means ----------------
+const RADPOS = { left: ['旁', 'Left side'], right: ['边', 'Right side'], top: ['头', 'Top'], bottom: ['底', 'Bottom'], wrap: ['框', 'Around'] };
+const radGroup = r => ['lb', 'frame', 'tlr', 'tl', 'tr'].includes(r.pos) ? 'wrap' : r.pos;
+const posSVG = pos => { const R = { left: [[2, 2, 8, 20]], right: [[14, 2, 8, 20]], top: [[2, 2, 20, 8]], bottom: [[2, 14, 20, 8]], lb: [[2, 2, 6, 20], [2, 16, 20, 6]], frame: [[2, 2, 20, 4], [2, 18, 20, 4], [2, 2, 4, 20], [18, 2, 4, 20]], tlr: [[2, 2, 20, 5], [2, 2, 4, 20], [18, 2, 4, 20]], tl: [[2, 2, 20, 5], [2, 2, 5, 20]], tr: [[2, 2, 20, 5], [17, 2, 5, 20]] }[pos] || [];
+  return `<svg class="pos" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.5" class="pb"/>${R.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="pf"/>`).join('')}</svg>`; };
+function radOf(v) { // which 部首 entry a character's parts point to
+  const L = (D.rad || {}).list || [];
+  for (const part of [v.r, ...(v.c || [])].filter(Boolean)) {
+    if (part === '阝') return L.findIndex(r => r.f === '阝' && r.pos === ((v.c || [])[0] === '阝' ? 'left' : 'right'));
+    let i = L.findIndex(r => r.f === part); if (i < 0) i = L.findIndex(r => r.full === part); if (i >= 0) return i;
+  }
+  return -1;
+}
+const radLink = v => { const i = radOf(v), r = i >= 0 && D.rad.list[i]; if (!r) return v.r ? '部首 ' + esc(v.r) : '';
+  // name the position only when the character's own layout agrees (名 has 口 at the bottom, not 口字旁)
+  const c = v.c || [], part = c.find(x => x === r.f || x === r.full) || v.r, fits = !c.length || (['left', 'top', 'lb', 'tl', 'tlr', 'frame', 'tr'].includes(r.pos) ? c[0] === part : c[c.length - 1] === part);
+  return `<a class="radlink" href="#radicals/${i}"><b class="hz">${esc(r.f)}</b> ${fits ? esc(r.name) + ' · ' : ''}${esc(r.m)}</a>`; };
+let RADF = 'all';
+V.radicals = sel => {
+  const R = D.rad; if (!R) { view.innerHTML = `${ph('部首', 'Radicals')}<div class="card">Couldn't load the radicals. Connect once and reopen.</div>`; return; }
+  const draw = () => {
+    const list = R.list.map((r, i) => ({ r, i })).filter(x => RADF === 'all' || radGroup(x.r) === RADF);
+    $('#radgrid').innerHTML = list.map(({ r, i }) => `<button class="rad" data-ri="${i}">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b><span class="hz">${esc(r.name)}</span><small>${esc(r.m)}</small></button>`).join('');
+    $$('#radgrid [data-ri]').forEach(b => b.onclick = () => radSheet(+b.dataset.ri));
+    $$('[data-rf]').forEach(b => b.classList.toggle('on', b.dataset.rf === RADF));
+  };
+  view.innerHTML = `${ph('部首', 'Sides, tops and bottoms')}<p class="uintro">${esc(R.intro)}</p>
+    <div class="radkey">${Object.entries(RADPOS).map(([k, [z, e]]) => `<div>${posSVG({ wrap: 'frame' }[k] || k)}<b class="hz">${z}</b><span>${e}</span></div>`).join('')}</div>
+    <button class="btn block cta" data-act="radquiz">${ic('target')} 练部首 Practise radicals</button>
+    <div class="row chips">${[['all', '全部 All'], ...Object.entries(RADPOS).map(([k, [z, e]]) => [k, `${z} ${e}`])].map(([k, l]) => `<button class="chip" data-rf="${k}">${l}</button>`).join('')}</div>
+    <div class="radgrid" id="radgrid"></div>`;
+  $$('[data-rf]').forEach(b => b.onclick = () => { RADF = b.dataset.rf; draw(); });
+  draw();
+  if (sel != null && R.list[+sel]) radSheet(+sel);
+};
+function radSheet(i) {
+  const r = D.rad.list[i];
+  const known = [...D.chars.entries()].filter(([c, v]) => radOf(v) === i && !r.ex.some(e => e[0] === c)).slice(0, 16);
+  const word = c => [...D.items.values()].find(it => it.s === c);
+  sheet(`<div class="radhead">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b><div><b class="hz">${esc(r.name)}</b><span>${esc(r.py)}</span></div></div>
+    <p class="radm">${esc(r.m)}${r.full && r.full !== r.f ? ` <span class="muted">· from <b class="hz">${esc(r.full)}</b></span>` : ''}</p><p class="small">${esc(r.n)}</p>
+    ${r.like ? `<p class="radlike">${ic('alert')} <b class="hz">${esc(r.like[0])}</b> ${esc(r.like[1])}</p>` : ''}
+    <div class="radex">${r.ex.map(([c, py, m]) => { const w = word(c); return `<div class="rx"><b class="hz">${esc(c)}</b><span class="grow"><span class="tc">${esc(py)}</span><br><small>${esc(m)}</small></span><button class="lplay" data-act="say" data-t="${esc(c)}" data-p="${esc(py)}" aria-label="Play">${ic('play')}</button>${w ? `<a class="small" href="#entry/${encodeURIComponent(w.id)}">${ic('chev')}</a>` : ''}</div>`; }).join('')}</div>
+    ${known.length ? `<p class="small muted" style="margin-top:12px">Also in your course:</p><p class="hz radknown">${known.map(([c, v]) => `<span title="${esc(v.m || '')}">${esc(c)}</span>`).join('')}</p>` : ''}`);
+}
+function startRadQuiz() { // see the part, know its place, name and meaning; then guess new characters from it
+  const L = D.rad.list, other = (r, n) => sample(L.filter(x => x.f !== r.f && x.m !== r.m), n);
+  const tasks = shuffle(L.map((r, i) => ({ r, i }))).slice(0, 12).map(({ r, i }) => {
+    const q = Math.random(), e = pick(r.ex);
+    return { kind: 'custom', run: (host, cb) => {
+      const why = `<b class="hz">${esc(r.f)}</b> ${esc(r.name)} (${esc(RADPOS[radGroup(r)][1].toLowerCase()).replace('around', 'wraps around')}) = ${esc(r.m)}. ${r.ex.map(x => `<span class="hz">${esc(x[0])}</span> ${esc(x[2])}`).join(' · ')}`;
+      const fin = res => cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + why });
+      if (q < 0.4) { // guess a character's meaning from its part
+        const opts = shuffle([e, ...other(r, 3).map(x => pick(x.ex))]);
+        host.innerHTML = `<p class="muted center">部首 · Guess the meaning from its part</p><div class="big md hz">${esc(e[0])}</div><p class="center tc">${esc(e[1])}</p>${mcHTML(opts, o => esc(o[2]))}`;
+        say(e[0], undefined, e[1]); return bindMC(host, opts, opts.indexOf(e), fin);
+      }
+      if (q < 0.65) { // find the meaning part
+        const opts = shuffle([r, ...other(r, 3)]);
+        host.innerHTML = `<p class="muted center">部首 · Which part carries the meaning?</p><div class="big md hz">${esc(e[0])}</div><p class="center">${esc(e[2])}</p><div class="grid2">${opts.map((o, k) => `<button class="opt center hz" style="font-size:34px" data-i="${k}">${esc(o.f)}</button>`).join('')}</div>`;
+        return bindMC(host, opts, opts.indexOf(r), fin);
+      }
+      if (q < 0.85) { // what it means
+        const opts = shuffle([r, ...other(r, 3)]);
+        host.innerHTML = `<p class="muted center">部首 · What does this part mean?</p><div class="radq">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b></div>${mcHTML(opts, o => esc(o.m))}`;
+        return bindMC(host, opts, opts.indexOf(r), fin);
+      }
+      const opts = shuffle([r, ...other(r, 3)]); // what it's called
+      host.innerHTML = `<p class="muted center">部首 · What is it called?</p><div class="radq">${posSVG(r.pos)}<b class="hz">${esc(r.f)}</b></div>${mcHTML(opts, o => `<span class="hz">${esc(o.name)}</span> <small class="muted">${esc(o.py)}</small>`)}`;
+      bindMC(host, opts, opts.indexOf(r), fin);
+    } };
+  });
+  startSession(tasks, 'rad', { onDone: (pct, s) => doneScreen({ seal: '一目了然', title: '部首练习', sub: 'Spot the part, guess the meaning: that works on characters you have never seen.', stats: sesStats(s), cta: '部首 Back to radicals', href: '#radicals' }) });
+}
 V.more = () => {
-  const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
+  const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#radicals', 'note', '部首', 'Radicals: sides, tops, bottoms'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
   view.innerHTML = `${ph('更多', 'More')}<div class="list">${rows.map(([h, i, z, e]) => `<a href="${h}">${ic(i)}<span class="grow"><b class="hz">${z}</b> <span class="small muted">${e}</span></span>${ic('chev')}</a>`).join('')}</div>`;
 };
 V.scens = () => { view.innerHTML = `${ph('情景', 'Scenarios')}<div class="list">${[...D.scen.values()].filter(s => unitUnlocked(D.unitById.get(s.unit))).map(s => `<a href="#scen/${s.id}"><span class="grow hz">${esc(s.title)}</span><span class="small muted">${META.progress.scen[s.id] != null ? META.progress.scen[s.id] + '%' : ''}</span>›</a>`).join('')}</div>`; };
@@ -2461,6 +2557,7 @@ const ACT = {
   say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
   quit: () => { if (confirm('End this session? Progress so far is saved.')) endSession(); },
   reviews: () => startReviews(), weak: () => startWeak(),
+  radquiz: () => D.rad ? startRadQuiz() : toast('Radicals not loaded'),
   daily: () => startDaily(), sentences: () => startSentences(), convo: () => startConvo(), lab: el => startLab(el.dataset.id),
   lesson: el => { const l = D.lessons.get(el.dataset.id); if (l && lessonUnlocked(l)) startLesson(l); },
   check: el => startCheckpoint(D.unitById.get(el.dataset.id)), exam: el => startStageExam(+el.dataset.n),
