@@ -133,7 +133,7 @@ def pick_sentences(w, allowed, lv, k):
     for x in cands:
         p = sent_py(x['zh'])
         if not p or len(p.split()) + p.count('r ') + p.endswith('r') * 0 < x['n'] - x['zh'].count('儿') or len(p.split()) > x['n']: continue
-        out.append({'zh': x['zh'], 'p': p, 'en': x['en'], 't': x['id']}); used[x['zh']] += 1
+        out.append({'zh': x['zh'], 'p': p, 'en': x['en']}); used[x['zh']] += 1
         if len(out) == k: break
     return out
 
@@ -196,7 +196,7 @@ for lv, n, title, en in LEVELS:
                 'intro': f'{title}, words {a}–{b}, most common first. The sentences use characters from this unit and earlier ones, so each unit builds on the last. Finish the lessons, then pass the checkpoint (85%) to open the next unit.',
                 'items': items, 'chars': chars, 'texts': texts, 'exercises': exs, 'lessons': lessons}
         units.append(unit)
-        unitsMeta.append({'id': uid, 'n': ui + 1, 'title': unit['title'], 'en': unit['en'], 'lessons': [l['id'] for l in lessons]})
+        unitsMeta.append({'id': uid, 'n': ui + 1, 'title': unit['title'], 'en': unit['en'], 'ls': ''.join(l['id'].split('.')[-1] for l in lessons)})  # lesson ids are l.<unit>.<char>
     os.makedirs(os.path.join(DATA, 'hsk'), exist_ok=True)
     json.dump({'stage': n, 'level': lv, 'units': units}, open(os.path.join(DATA, 'hsk', f'hsk{lv}.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     stages.append({'n': n, 'track': 'hsk', 'title': title, 'en': f'{en} · {len(ws)} words', 'pack': f'hsk/hsk{lv}.json', 'units': [], 'unitsMeta': unitsMeta})
@@ -204,5 +204,5 @@ for lv, n, title, en in LEVELS:
 
 idx = json.load(open(os.path.join(DATA, 'index.json'), encoding='utf-8'))
 idx['stages'] = [s for s in idx['stages'] if s.get('track') != 'hsk'] + stages
-json.dump(idx, open(os.path.join(DATA, 'index.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+json.dump(idx, open(os.path.join(DATA, 'index.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print('examples per word:', dict(stats))

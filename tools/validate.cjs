@@ -13,7 +13,7 @@ const units = [];
 for (const st of idx.stages) {
   for (const f of st.units) { try { units.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))); } catch (e) { E(f, 'cannot parse: ' + e.message); } }
   if (st.pack) { try { const pk = JSON.parse(fs.readFileSync(path.join(dir, st.pack), 'utf8')); pk.units.forEach(u => units.push(u));
-    const ids = pk.units.map(u => u.id).join(), meta = (st.unitsMeta || []).map(m => m.id).join(); if (ids !== meta) E(st.pack, 'unitsMeta out of sync with the pack'); } catch (e) { E(st.pack, 'cannot parse: ' + e.message); } }
+    const ids = pk.units.map(u => u.id + ':' + u.lessons.map(l => l.id.split('.').pop()).join('')).join(), meta = (st.unitsMeta || []).map(m => m.id + ':' + m.ls).join(); if (ids !== meta) E(st.pack, 'unitsMeta out of sync with the pack'); } catch (e) { E(st.pack, 'cannot parse: ' + e.message); } }
 }
 const hskNote = { fewEx: 0, noChar: 0 };
 const allChars = new Map();

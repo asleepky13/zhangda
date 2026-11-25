@@ -5,6 +5,8 @@ Needs: pip install edge-tts (uses Microsoft's neural voices; one-off generation,
 Writes data/voice/<hash>.mp3 and data/voice/index.json (text -> file). Existing files are kept, so runs are incremental.
 """
 import asyncio, hashlib, json, re, glob, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from trim_audio import trim  # cut the TTS service's dead air (~30%)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, 'data')
@@ -76,7 +78,7 @@ async def main():
         async with sem:
             for attempt in range(3):
                 try:
-                    await edge_tts.Communicate(t, VOICE, rate='-5%').save(os.path.join(OUT, h + '.mp3')); return
+                    await edge_tts.Communicate(t, VOICE, rate='-5%').save(os.path.join(OUT, h + '.mp3')); trim(os.path.join(OUT, h + '.mp3')); return
                 except Exception as e:
                     await asyncio.sleep(2 + attempt * 3); err = e
             fails.append((t, str(err)))

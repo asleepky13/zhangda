@@ -956,6 +956,7 @@ async function loadData() {
   const idx = await fetch('data/index.json').then(r => r.json());
   D.rad = await fetch('data/radicals.json').then(r => r.json()).catch(() => null);
   D.stages = idx.stages;
+  for (const st of D.stages) for (const m of st.unitsMeta || []) m.lessons = m.lessons || [...m.ls].map(c => `l.${m.id}.${c}`);
   const files = idx.stages.filter(s => !s.pack).flatMap(s => s.units);
   const units = await Promise.all(files.map(f => fetch('data/' + f).then(r => r.json()).catch(e => { console.warn('unit failed', f, e); return null; })));
   D.syl = await fetch('data/syllables.json').then(r => r.json()).catch(() => ({}));
