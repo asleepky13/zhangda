@@ -398,6 +398,14 @@ header .back .ico{width:22px;height:22px;transform:rotate(180deg);stroke-width:2
 .radpt span{font-size:14px;line-height:1.55}
 .rad.seen::after{content:"";position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--good)}
 
+
+/* HSK track */
+.trackseg{margin:14px 0 10px}
+.trackh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.trackh small{font:500 12px var(--ui);color:var(--muted)}
+.hskl summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer}.hskl summary::-webkit-details-marker{display:none}
+.hskl summary b{font:800 18px var(--song)}
+.hskl.lock summary{opacity:.6}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -891,7 +899,7 @@ const sample = (a, n) => shuffle(a.slice()).slice(0, n);
 const pick = a => a[Math.random() * a.length | 0];
 const dayKey = (t = Date.now()) => { const d = new Date(t - 4 * 3600e3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const SKILLS = ['reading', 'writing', 'listening', 'speaking'];
-const POS = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb', pron: 'pronoun', num: 'number', mw: 'measure word', part: 'particle', conj: 'conjunction', prefix: 'prefix', phrase: 'phrase' };
+const POS = { prep: 'preposition', interj: 'interjection', n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb', pron: 'pronoun', num: 'number', mw: 'measure word', part: 'particle', conj: 'conjunction', prefix: 'prefix', phrase: 'phrase' };
 const SK_ZH = { reading: '读', writing: '写', listening: '听', speaking: '说', drill: '练', sentence: '句' };
 const view = $('#view');
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
@@ -948,15 +956,34 @@ async function loadData() {
   const idx = await fetch('data/index.json').then(r => r.json());
   D.rad = await fetch('data/radicals.json').then(r => r.json()).catch(() => null);
   D.stages = idx.stages;
-  const files = idx.stages.flatMap(s => s.units);
+  const files = idx.stages.filter(s => !s.pack).flatMap(s => s.units);
   const units = await Promise.all(files.map(f => fetch('data/' + f).then(r => r.json()).catch(e => { console.warn('unit failed', f, e); return null; })));
   D.syl = await fetch('data/syllables.json').then(r => r.json()).catch(() => ({}));
   D.audio = await fetch('data/audio.json').then(r => r.json()).catch(() => null);
   if (D.audio) { D.audioWords = new Set(D.audio.words); D.audioSyl = new Set(D.audio.syl); }
   D.voice = await fetch('data/voice/index.json').then(r => r.json()).catch(() => null);
-  D.sylSet = new Set(Object.keys(D.syl).map(k => Core.normBase(k.replace(/v/g, 'ü'))).concat(['er', 'm', 'n', 'ng', 'hm', 'yo', 'o', 'me', 'ne', 'ei', 'dei', 'zhei', 'nang', 'den', 'cen', 'chua', 'zhuai', 'shei']));
+  D.sylSet = new Set(Object.keys(D.syl).map(k => Core.normBase(k.replace(/v/g, 'ü'))).concat(['er', 'm', 'n', 'ng', 'hm', 'yo', 'o', 'me', 'ne', 'ei', 'dei', 'zhei', 'nang', 'den', 'cen', 'chua', 'zhuai', 'shei', 'miu']));
   units.filter(Boolean).forEach(addUnit);
   for (const it of META.custom || []) addItem(it);
+  // HSK levels you've started (cards or lessons), plus the one you're heading into
+  const need = new Set();
+  for (const c of CARDS.values()) { const m = /^h(\d)\./.exec(c.item || ''); if (m) need.add(10 + +m[1]); }
+  for (const k of Object.keys(META.progress.lessons)) { const m = /^l\.h(\d)u/.exec(k); if (m) need.add(10 + +m[1]); }
+  if (META.track === 'hsk') need.add(hskFrontier());
+  await Promise.all([...need].map(ensurePack));
+}
+const PACKS = new Map();
+const hskStages = () => D.stages.filter(s => s.track === 'hsk');
+function hskFrontier() { const st = hskStages().find(s => !stagePassed(s.n) && !(s.unitsMeta || []).every(m => (META.progress.units[m.id] || 0) >= 85)); return (st || hskStages()[0] || {}).n; }
+function ensurePack(n) { // one HSK level: its units, sentences and audio list
+  const st = D.stages.find(s => s.n === n); if (!st || !st.pack) return Promise.resolve();
+  if (!PACKS.has(n)) PACKS.set(n, (async () => {
+    const pk = await fetch('data/' + st.pack).then(r => r.json());
+    pk.units.forEach(addUnit);
+    const v = await fetch('data/voice/' + st.pack.split('/').pop()).then(r => r.ok ? r.json() : null).catch(() => null);
+    if (v) { D.voice = D.voice || { files: {} }; Object.assign(D.voice.files, v.files); }
+  })().catch(e => { PACKS.delete(n); throw e; }));
+  return PACKS.get(n);
 }
 function addItem(it) {
   D.items.set(it.id, it);
@@ -1921,23 +1948,28 @@ function unitUnlocked(u) {
   if (S().unlockAll) return true;
   const list = unitsOfStage(u.stage), i = list.indexOf(u);
   if (i > 0) return unitPassed(list[i - 1]);
-  return u.stage === 1 || stagePassed(u.stage - 1);
+  return u.stage === 1 || u.stage === 11 || stagePassed(u.stage - 1);
 }
 function lessonUnlocked(l) { const u = D.unitById.get(l.unit), i = u.lessons.indexOf(l); return unitUnlocked(u) && (i === 0 || lessonDone(u.lessons[i - 1].id) || S().unlockAll); }
-function nextLesson() { for (const st of D.stages) for (const u of unitsOfStage(st.n)) { if (!unitUnlocked(u)) continue; for (const l of u.lessons) if (!lessonDone(l.id)) return l; } return null; }
+function nextLesson() { // the track you're in comes first; units whose checkpoint is passed count as done
+  const order = META.track === 'hsk' ? [...hskStages(), ...D.stages.filter(s => !s.track)] : D.stages;
+  for (const st of order) for (const u of unitsOfStage(st.n)) { if (!unitUnlocked(u) || unitPassed(u)) continue; for (const l of u.lessons) if (!lessonDone(l.id)) return l; }
+  return null;
+}
 function markLesson(l) { META.progress.lessons[l.id] = Date.now(); save(); }
 function startLesson(l) {
   if (l.type === 'pinyin') return go(`#pinyin/${l.id}`);
   if (l.type === 'text') return go(`#text/${l.text}/${l.id}`);
   if (l.type === 'scenario') return go(`#scen/${D.unitById.get(l.unit).scenario.id}/${l.id}`);
+  META.track = (D.unitById.get(l.unit) || {}).track || 'core';
   const items = (l.items || []).map(id => D.items.get(id)).filter(Boolean);
   const tasks = [];
   dayStat().new += items.filter(it => !CARDS.has(it.id + '|' + skillsFor(it)[0])).length;
   items.forEach(addItemCards);
   const T = (it, sk, kind) => { const c = kind && CARDS.get(it.id + '|' + sk); return c ? { ...cardTask(c, 'lesson'), kind } : null; };
   const words0 = items.filter(it => it.k !== 'syl');
-  // 0. the goal: what you'll be able to do at the end
-  tasks.push({ kind: 'info', html: `<p class="muted center">本课目标 · This lesson</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:6px">${esc(l.title)}</h2>
+  // 0. the goal: what you'll be able to do at the end (drill-only lessons skip it)
+  if (items.length) tasks.push({ kind: 'info', html: `<p class="muted center">本课目标 · This lesson</p><h2 class="display" style="font-size:28px;text-align:center;margin-bottom:6px">${esc(l.title)}</h2>
     <ul class="goals"><li>${ic('cards')} Recognise ${items.length} new ${words0.length ? 'words' : 'syllables'} by sound and sight</li>${words0.length ? `<li>${ic('chat')} Use them in real sentences</li><li>${ic('mic')} Say them with the right tones</li><li>${ic('note')} Write them stroke by stroke</li>` : `<li>${ic('mic')} Hear and say each tone</li>`}<li>${ic('target')} Recall them from memory at the end</li></ul>
     <div class="goalw">${items.map(it => `<span class="hz">${esc(it.s)}</span>`).join('')}</div>` });
   // 1. meet the words four at a time, each followed by a quick check
@@ -2068,7 +2100,7 @@ V.today = () => {
   const sentDue = due.filter(c => c.skill === 'sentence').length;
   const st = dayStat(), nl = nextLesson(), weakN = Object.keys(META.weak).length, newLeft = Math.max(0, S().newLimit - st.new);
   const nu = nl && D.unitById.get(nl.unit);
-  const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言' };
+  const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言', reading: '阅读' };
   const reads = D.units.filter(unitUnlocked).flatMap(u => u.texts || []).slice(0, 10);
   const sk = META.streak, live = sk.last === dayKey() || sk.last === dayKey(Date.now() - 864e5);
   const canLesson = nl && !due.length && !(newLeft <= 0 && nl.type === 'new');
@@ -2076,7 +2108,7 @@ V.today = () => {
     : canLesson ? `<button class="btn block cta" data-act="lesson" data-id="${nl.id}">开始学习</button>`
     : `<button class="btn block" disabled>${nl ? '今日新词已满' : '课程已全部完成'}</button>`;
   view.innerHTML = `<section class="today"><div class="vdate" aria-hidden="true">${zhDate()}</div>
-    <p class="meta">${nl ? `第${Core.numToZh(nu.n)}单元　${esc(nu.title)}` : '今日'}</p>
+    <p class="meta">${nl ? `${nu.track === 'hsk' ? esc((D.stages.find(x => x.n === nu.stage) || {}).title) + '　' : ''}第${Core.numToZh(nu.n)}单元　${esc(nu.title)}` : '今日'}</p>
     <h2 class="display">${nl ? esc(nl.title) : '今天的课都学完了'}</h2>
     <div class="overview">${dialSVG(st.rev, S().goal)}
       <dl class="facts"><div><dt>待复习 Due</dt><dd>${due.length}</dd></div><div><dt>连续 Streak</dt><dd>${live ? sk.n : 0}<small>天</small></dd></div><div><dt>新词 New</dt><dd>${st.new}<small>/ ${S().newLimit}</small></dd></div></dl></div>
@@ -2100,8 +2132,8 @@ function forecastHTML(days) {
   const mx = Math.max(1, ...counts);
   return `<div class="fc">${counts.map((n, i) => `<div style="height:${n / mx * 100}%" title="${n} due">${n ? `<b>${n}</b>` : ''}<span>${i === 0 ? '今' : '+' + i}</span></div>`).join('')}</div><div style="height:26px"></div>`;
 }
-V.course = () => {
-  view.innerHTML = `${ph('课程', 'Course')}` + D.stages.map(st => {
+function coreCourseHTML() {
+  return D.stages.filter(st => !st.track).map(st => {
     const us = unitsOfStage(st.n), open = st.n === 1 || stagePassed(st.n - 1) || S().unlockAll;
     return `<div class="card ${open ? '' : 'lock'}"><div class="row"><b class="grow hz">第${st.n}阶段 ${esc(st.title)}</b><span class="small muted">${esc(st.en)}</span></div>
     ${us.length ? `<div class="list">${us.map(u => { const ok = unitUnlocked(u), sc = META.progress.units[u.id]; const done = u.lessons.filter(l => lessonDone(l.id)).length;
@@ -2109,9 +2141,42 @@ V.course = () => {
       <button class="btn block" data-act="exam" data-n="${st.n}" ${us.every(unitPassed) || S().unlockAll ? '' : 'disabled'}>阶段考试 Stage exam${META.progress.stages[st.n] != null ? ` · best ${META.progress.stages[st.n]}%` : ''}</button>`
       : `<p class="small muted">Coming as you say "next": ${esc(st.plan || '')}</p>`}</div>`;
   }).join('');
+
+}
+const metaUnlocked = (st, i) => S().unlockAll || (i > 0 ? (META.progress.units[st.unitsMeta[i - 1].id] || 0) >= 85 : st.n === 11 || stagePassed(st.n - 1));
+function hskCourseHTML() {
+  const front = hskFrontier();
+  return `<h3 class="trackh">HSK 3.0 <small>levels 1–6 and the 7–9 band · ${hskStages().reduce((a, st) => a + st.unitsMeta.length, 0)} units</small></h3>
+  <p class="small muted">Already know a level? Take its placement test: 85% marks the whole level as passed and opens the next one.</p>` + hskStages().map(st => {
+    const ms = st.unitsMeta, passed = ms.filter(m => (META.progress.units[m.id] || 0) >= 85).length, open = metaUnlocked(st, 0);
+    const lessonsDone = ms.reduce((a, m) => a + m.lessons.filter(lessonDone).length, 0), lessonsAll = ms.reduce((a, m) => a + m.lessons.length, 0);
+    return `<details class="card hskl ${open ? '' : 'lock'}" ${st.n === front ? 'open' : ''}><summary><span class="grow"><b>${esc(st.title)}</b> <span class="small muted">${esc(st.en)}</span><span class="ubar"><i style="width:${lessonsDone / lessonsAll * 100}%"></i></span><span class="small muted">${passed}/${ms.length} units passed${stagePassed(st.n) ? ' · level passed ' + ic('check') : ''}</span></span>${open ? '' : ic('lock')}</summary>
+      <div class="row" style="margin:6px 0 10px"><button class="btn sm" data-act="place" data-n="${st.n}">${ic('target')} Placement test</button><button class="btn sm" data-act="exam" data-n="${st.n}" ${passed === ms.length || S().unlockAll ? '' : 'disabled'}>Level exam${META.progress.stages[st.n] != null ? ` · ${META.progress.stages[st.n]}%` : ''}</button></div>
+      <div class="list">${ms.map((m, i) => { const ok = metaUnlocked(st, i), sc = META.progress.units[m.id], done = m.lessons.filter(lessonDone).length;
+        return `<a href="#unit/${m.id}" class="${ok ? '' : 'lock'}"><span class="unum">${m.n}</span><span class="grow"><span class="hz">${esc(m.title)}…</span> <span class="small muted">${esc(m.en)}</span><span class="ubar"><i style="width:${done / m.lessons.length * 100}%"></i></span><span class="small muted">${done}/${m.lessons.length} lessons${sc != null ? ` · checkpoint ${sc}%` : ''}</span></span>${sc >= 85 ? ic('check') : ok ? ic('chev') : ic('lock')}</a>`; }).join('')}</div></details>`;
+  }).join('');
+}
+V.course = () => { view.innerHTML = `${ph('课程', 'Course')}<div class="seg trackseg" role="radiogroup" aria-label="Course track"><button role="radio" data-tr="core" aria-checked="${META.track !== 'hsk'}">成长 Growing up</button><button role="radio" data-tr="hsk" aria-checked="${META.track === 'hsk'}">HSK 1–9</button></div><div id="trk"></div>`;
+  const draw = () => { $('#trk').innerHTML = META.track === 'hsk' ? hskCourseHTML() : coreCourseHTML(); $$('[data-tr]').forEach(b => b.setAttribute('aria-checked', String((b.dataset.tr === 'hsk') === (META.track === 'hsk')))); };
+  $$('[data-tr]').forEach(b => b.onclick = () => { META.track = b.dataset.tr; save(); draw(); });
+  draw();
 };
+function startPlacement(n) { // 30 words from the whole level, meaning by eye and by ear; 85% passes the level
+  const st = D.stages.find(x => x.n === n), us = unitsOfStage(n), items = us.flatMap(u => u.items);
+  const tasks = sample(items, 30).map((it, k) => ({ item: it.id, card: null, kind: k % 3 === 2 ? 'listenMC' : 'mcMeaning', tmpCard: { ...Core.newCard(it.id + '|reading', 'reading'), item: it.id, reps: 1 } }));
+  startSession(tasks, 'exam', { onDone: (pct, s) => {
+    const pass = pct >= 85;
+    if (pass) { META.progress.stages[n] = Math.max(META.progress.stages[n] || 0, pct); us.forEach(u => META.progress.units[u.id] = Math.max(META.progress.units[u.id] || 0, 100)); META.track = 'hsk'; }
+    save();
+    doneScreen(pass ? { seal: '金榜题名', title: `${esc(st.title)} 通过！`, sub: 'Placed out: the whole level counts as passed and the next level is open. Its lessons stay available if you want them.', stats: sesStats(s), cta: '继续 Course', href: '#course' }
+      : { seal: '再接再厉', pass: false, title: `${esc(st.title)}: ${pct}%`, sub: 'Not quite 85%. Work through this level’s units: they start where you are.', stats: sesStats(s), cta: '课程 Course', href: '#course' });
+  } });
+}
 V.unit = id => {
-  const u = D.unitById.get(id); if (!u) return go('#course');
+  const u = D.unitById.get(id);
+  if (!u) { const st = D.stages.find(x => (x.unitsMeta || []).some(m => m.id === id)); if (!st) return go('#course');
+    view.innerHTML = `<p class="muted" style="margin-top:30px">加载中… Loading ${esc(st.title)}…</p>`;
+    return ensurePack(st.n).then(() => location.hash === '#unit/' + id && V.unit(id), () => { view.innerHTML = `<div class="card">Couldn't load ${esc(st.title)}. Connect once, then it works offline.</div>`; }); }
   const ok = unitUnlocked(u), done = u.lessons.filter(l => lessonDone(l.id)).length;
   const cur = u.lessons.find(l => !lessonDone(l.id) && lessonUnlocked(l));
   const kind = { new: '生词', text: '阅读', drill: '练习', scenario: '情景', pinyin: '拼音' };
@@ -2128,7 +2193,7 @@ V.unit = id => {
       if (x.check) return `<div class="rstop side-${side}" style="${pos}"><button class="rnode rcheck ${x.st}" data-act="${x.st === 'lock' ? '' : 'check'}" data-id="${u.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="Unit checkpoint, 85% to pass">考</button><div class="rlabel"><small>检测 · Checkpoint</small><b>单元检测</b><small>${sc != null ? `best ${sc}%` : '85% to pass'}</small></div></div>`;
       const l = x.l, glyph = l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : { text: '读', drill: '练', scenario: '说', pinyin: '拼' }[l.type] || '学';
       return `<div class="rstop side-${side}" style="${pos}"><button class="rnode ${x.st}" data-act="${x.st === 'lock' ? '' : 'lesson'}" data-id="${l.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="${esc(l.title)}${x.st === 'done' ? ', done' : x.st === 'lock' ? ', locked' : ''}">${x.st === 'done' ? ic('check') : x.st === 'lock' ? ic('lock') : glyph}</button><div class="rlabel"><small>${String(i + 1).padStart(2, '0')} · ${kind[l.type] || ''}</small><b>${esc(l.title)}</b>${x.st === 'cur' ? '<span class="go">开始</span>' : `<small>${detail(l)}</small>`}</div></div>`; }).join('')}</div>`;
-  view.innerHTML = `<section class="uhead"><div class="vnum" aria-hidden="true">第${Core.numToZh(u.n)}单元</div><p class="meta">第${Core.numToZh(u.stage)}阶段</p><h2 class="display">${esc(u.title)}</h2><p class="en">${esc(u.en)}</p>
+  view.innerHTML = `<section class="uhead"><div class="vnum" aria-hidden="true">第${Core.numToZh(u.n)}单元</div><p class="meta">${u.track === 'hsk' ? esc((D.stages.find(x => x.n === u.stage) || {}).title) : `第${Core.numToZh(u.stage)}阶段`}</p><h2 class="display">${esc(u.title)}</h2><p class="en">${esc(u.en)}</p>
     <div class="uprog"><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><span>${done} / ${u.lessons.length}</span></div></section>
   <p class="uintro">${esc(u.intro || '')}</p>
   ${road}
@@ -2138,7 +2203,7 @@ V.unit = id => {
 };
 V.library = () => {
   const open = D.units.filter(unitUnlocked);
-  const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言' };
+  const kinds = { rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言', reading: '阅读' };
   view.innerHTML = `${ph('书库', 'Library')}<p class="small muted">Every text from the units you've reached.</p>` + open.map(u => (u.texts || []).length ? `<h3 class="hz">${esc(u.title)}</h3><div class="notes">${u.texts.map(t => `<a class="note" href="#text/${t.id}"><span class="tag">${kinds[t.kind] || t.kind}</span>${META.progress.lessons['read:' + t.id] ? ic('check') : ''}<b class="hz">${esc(t.title)}</b>${t.lines && t.lines[0] ? `<span class="pv hz">${esc(t.lines[0].zh)}</span>` : ''}<span class="sig">${esc((t.src || '').split(/[(,·]/)[0].trim())}</span></a>`).join('')}</div>` : '').join('');
 };
 let READ = { py: true, tr: false };
@@ -2147,7 +2212,7 @@ V.text = (id, lessonId) => {
   const u = D.unitById.get(t.unit);
   if (S().pinyin === 'always') READ.py = true; else if (S().pinyin === 'never') READ.py = false; else if (READ.auto !== id) { READ.py = u.stage <= 2; READ.auto = id; }
   const poem = ['poem', 'rhyme', 'classical'].includes(t.kind);
-  view.innerHTML = `<section class="uhead"><p class="meta">${esc({ rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言' }[t.kind] || t.kind)}</p><h2 class="display">${esc(t.title)}</h2><p class="en">${esc(t.src || '')}${t.kind === 'classical' ? ' · 文言文 classical Chinese' : ''}</p></section>
+  view.innerHTML = `<section class="uhead"><p class="meta">${esc({ rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言', reading: '阅读' }[t.kind] || t.kind)}</p><h2 class="display">${esc(t.title)}</h2><p class="en">${esc(t.src || '')}${t.kind === 'classical' ? ' · 文言文 classical Chinese' : ''}</p></section>
   <div class="row chips"><button class="chip ${READ.py ? 'on' : ''}" data-act="rpy">拼音</button><button class="chip ${READ.tr ? 'on' : ''}" data-act="rtr">译文</button><button class="chip" data-act="rall">${ic('play')} 全文</button><button class="chip" data-act="rall" data-r="0.6">${ic('play')} 慢</button><button class="chip" data-act="speed">${ic('timer')} 速读</button></div>
   <div class="reader ${poem ? 'kai center' : ''} ${READ.py ? '' : 'nopy'} ${S().toneColors ? 'tc' : ''}" id="rd">${t.lines.map((l, i) => `<div class="ln" data-li="${i}">${rubyHTML(l.zh, l.p)} <button class="lplay" data-act="say" data-t="${esc(l.zh)}" aria-label="Play line">${ic('play')}</button></div><div class="tr" ${READ.tr ? '' : 'hidden'}>${esc(l.en)}${l.mod ? `<br>白话: ${esc(l.mod)}` : ''}</div>`).join('')}</div>
   ${(t.notes || []).length ? `<details class="card"><summary>${ic('note')}注释 Notes</summary>${t.notes.map(n => `<p class="small">${esc(n)}</p>`).join('')}</details>` : ''}
@@ -2578,7 +2643,8 @@ const ACT = {
   radquiz: () => D.rad ? startRadQuiz() : toast('Radicals not loaded'),
   daily: () => startDaily(), sentences: () => startSentences(), convo: () => startConvo(), lab: el => startLab(el.dataset.id),
   lesson: el => { const l = D.lessons.get(el.dataset.id); if (l && lessonUnlocked(l)) startLesson(l); },
-  check: el => startCheckpoint(D.unitById.get(el.dataset.id)), exam: el => startStageExam(+el.dataset.n),
+  check: el => startCheckpoint(D.unitById.get(el.dataset.id)), exam: el => ensurePack(+el.dataset.n).then(() => startStageExam(+el.dataset.n)),
+  place: el => { toast('Loading the level…'); ensurePack(+el.dataset.n).then(() => startPlacement(+el.dataset.n), () => toast("Couldn't load the level")); },
   cram: el => startCram(el.dataset.id),
   cramsel: () => { const us = D.units.filter(unitUnlocked); sheet(`<b>Cram which unit?</b><div class="list">${us.map(u => `<a href="javascript:void 0" data-act="cram" data-id="${u.id}"><span class="grow hz">${esc(u.title)}</span>›</a>`).join('')}<a href="javascript:void 0" data-act="cram" data-id=""><span class="grow">Everything learned</span>›</a></div>`); },
   revealpy: el => el.classList.toggle('nopy'),

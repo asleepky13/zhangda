@@ -22,14 +22,16 @@ def syl_key(p):
     base = re.sub(r'^([jqxy])ü', r'\1u', base).replace('ü', 'v')
     return f'{base}{tone}'
 
-def collect():
+def collect(pack=None):
+    """pack=None: the core course; pack='hsk/hsk1.json': one HSK level (its own index, loaded with the level)."""
     cmn = json.load(open(os.path.join(DATA, 'audio.json'), encoding='utf-8'))
     words, syls = set(cmn['words']), set(cmn['syl'])
     idx = json.load(open(os.path.join(DATA, 'index.json'), encoding='utf-8'))
-    texts = {'你好，我们开始学习吧。', '嗯？你说什么？'}
-    for st in idx['stages']:
-        for f in st['units']:
-            u = json.load(open(os.path.join(DATA, f), encoding='utf-8'))
+    texts = set() if pack else {'你好，我们开始学习吧。', '嗯？你说什么？'}
+    if pack: units = json.load(open(os.path.join(DATA, pack), encoding='utf-8'))['units']
+    else: units = [json.load(open(os.path.join(DATA, f), encoding='utf-8')) for st in idx['stages'] if not st.get('pack') for f in st['units']]
+    for st in [0]:
+        for u in units:
             for it in u['items']:
                 s = it['s']
                 han = HAN.findall(s)
@@ -58,10 +60,13 @@ def collect():
 async def main():
     import edge_tts
     os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, 'index.json')
+    pack = None
+    if '--hsk' in sys.argv: pack = f'hsk/hsk{sys.argv[sys.argv.index("--hsk") + 1]}.json'
+    collect_ = lambda: collect(pack)
+    path = os.path.join(OUT, os.path.basename(pack) if pack else 'index.json')
     index = json.load(open(path, encoding='utf-8')) if os.path.exists(path) else {'voice': VOICE, 'files': {}}
     todo = []
-    for t in collect():
+    for t in collect_():
         h = hashlib.sha1(t.encode('utf-8')).hexdigest()[:12]
         index['files'][t] = h
         if not os.path.exists(os.path.join(OUT, h + '.mp3')): todo.append((t, h))
@@ -78,7 +83,7 @@ async def main():
     await asyncio.gather(*(one(t, h) for t, h in todo))
     for t, e in fails: index['files'].pop(t, None); print('FAILED', t, e)
     # drop entries whose text no longer appears in the course
-    live = set(collect())
+    live = set(collect_())
     index['files'] = {k: v for k, v in sorted(index['files'].items()) if k in live}
     json.dump(index, open(path, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     size = sum(os.path.getsize(os.path.join(OUT, v + '.mp3')) for v in index['files'].values())

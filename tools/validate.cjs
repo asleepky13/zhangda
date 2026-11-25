@@ -4,15 +4,18 @@ const dir = path.join(__dirname, '..', 'data');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const m = { exports: {} }; new Function('module', html.match(/<script id="core">([\s\S]*?)<\/script>/)[1])(m); const C = m.exports;
 const syl = JSON.parse(fs.readFileSync(path.join(dir, 'syllables.json'), 'utf8'));
-const SYL = new Set(Object.keys(syl).map(k => C.normBase(k.replace(/v/g, 'ü'))).concat(['er', 'm', 'n', 'ng', 'hm', 'o', 'me', 'ne', 'ei', 'dei', 'zhei', 'nang', 'den', 'cen', 'chua', 'zhuai', 'shei', 'ma', 'ba', 'la', 'a', 'zi', 'de', 'le', 'ge', 'zhe', 'men', 'li', 'tou', 'mian', 'jie', 'qi', 'xi', 'ye', 'zhuo']));
+const SYL = new Set(Object.keys(syl).map(k => C.normBase(k.replace(/v/g, 'ü'))).concat(['er', 'm', 'n', 'ng', 'hm', 'o', 'me', 'ne', 'ei', 'dei', 'zhei', 'nang', 'den', 'cen', 'chua', 'zhuai', 'shei', 'miu', 'ma', 'ba', 'la', 'a', 'zi', 'de', 'le', 'ge', 'zhe', 'men', 'li', 'tou', 'mian', 'jie', 'qi', 'xi', 'ye', 'zhuo']));
 for (const [k, v] of Object.entries(syl)) if ([...v].length !== 4) console.log('syllables.json: bad entry', k, v);
 const idx = JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8'));
 const errs = [], warns = [], ids = new Map(), words = new Map();
 const E = (u, msg) => errs.push(`${u}: ${msg}`), Wn = (u, msg) => warns.push(`${u}: ${msg}`);
 const units = [];
-for (const st of idx.stages) for (const f of st.units) {
-  try { units.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))); } catch (e) { E(f, 'cannot parse: ' + e.message); }
+for (const st of idx.stages) {
+  for (const f of st.units) { try { units.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))); } catch (e) { E(f, 'cannot parse: ' + e.message); } }
+  if (st.pack) { try { const pk = JSON.parse(fs.readFileSync(path.join(dir, st.pack), 'utf8')); pk.units.forEach(u => units.push(u));
+    const ids = pk.units.map(u => u.id).join(), meta = (st.unitsMeta || []).map(m => m.id).join(); if (ids !== meta) E(st.pack, 'unitsMeta out of sync with the pack'); } catch (e) { E(st.pack, 'cannot parse: ' + e.message); } }
 }
+const hskNote = { fewEx: 0, noChar: 0 };
 const allChars = new Map();
 units.forEach(u => Object.entries(u.chars || {}).forEach(([c, v]) => allChars.set(c, v)));
 function checkPy(u, where, zh, p) {
@@ -38,9 +41,10 @@ for (const u of units) {
     ['k', 's', 'p', 'en'].forEach(k => !it[k] && E(U, `${it.id} missing ${k}`));
     checkPy(U, it.id, it.s, it.p);
     if (!['syl', 'rad'].includes(it.k)) {
-      if (words.has(it.s)) E(U, `word 「${it.s}」 defined twice (${words.get(it.s)})`); words.set(it.s, it.id);
-      if (!(it.ex && it.ex.length >= 2) && it.k !== 'char') Wn(U, `${it.id}: fewer than 2 examples`);
-      for (const c of [...it.s].filter(C.isHan)) if (!allChars.has(c)) Wn(U, `char 「${c}」 (in ${it.id}) has no chars entry`);
+      const wk = (u.track || 'core') + ':' + it.s; // a word may appear once per track
+      if (words.has(wk)) E(U, `word 「${it.s}」 defined twice (${words.get(wk)})`); words.set(wk, it.id);
+      if (!(it.ex && it.ex.length >= 2) && it.k !== 'char') { if (u.track === 'hsk') hskNote.fewEx++; else Wn(U, `${it.id}: fewer than 2 examples`); }
+      for (const c of [...it.s].filter(C.isHan)) if (!allChars.has(c)) { if (u.track === 'hsk') hskNote.noChar++; else Wn(U, `char 「${c}」 (in ${it.id}) has no chars entry`); }
     }
     if (it.pair && !(u.items || []).some(x => x.id === it.pair)) E(U, `${it.id}: pair ${it.pair} not in unit`);
     (it.ex || []).forEach((e, i) => { checkPy(U, `${it.id} ex${i}`, e.zh, e.p); if (!e.en) E(U, `${it.id} ex${i} no en`); nLines++; if (!e.zh.includes(it.s.replace('儿', '')) && it.k !== 'syl') Wn(U, `${it.id} ex${i} doesn't contain the word: ${e.zh}`); });
@@ -90,6 +94,7 @@ for (const u of units) {
   (u.items || []).forEach(it => !used.has(it.id) && E(U, `${it.id} not in any lesson`));
 }
 warns.forEach(w => console.log('warn ', w));
+if (hskNote.fewEx) console.log(`note  HSK: ${hskNote.fewEx} words have fewer than 2 example sentences (open sentence data runs thin at higher levels)`);
 errs.forEach(e => console.log('ERROR', e));
 console.log(`${units.length} units · ${nItems} items · ${nEx} exercises · ${nLines} sentences/lines · ${allChars.size} chars · ${errs.length} errors · ${warns.length} warnings`);
 process.exit(errs.length ? 1 : 0);
