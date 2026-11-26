@@ -406,6 +406,16 @@ header .back .ico{width:22px;height:22px;transform:rotate(180deg);stroke-width:2
 .hskl summary b{font:800 18px var(--song)}
 .hskl.lock summary{opacity:.6}
 
+
+/* practice bank */
+.iwords{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin:10px 0}
+.iw{display:flex;flex-direction:column;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-align:left;cursor:pointer}
+.iw b{font:700 19px var(--hz)}.iw span{font:600 12px var(--ui);color:var(--seal)}.iw small{font:500 11.5px var(--ui);color:var(--muted)}
+.spot{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin:16px 0;font-size:26px}
+.spot .sc{min-width:44px;min-height:48px;padding:0 4px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:500 26px var(--hz);cursor:pointer}
+.spot .sc.ok{border-color:var(--good);color:var(--good)}.spot .sc.no{border-color:var(--bad);color:var(--bad)}
+.tblw{overflow-x:auto;margin:10px 0}.tblw table{border-collapse:collapse;font-size:14px;min-width:100%}.tblw th,.tblw td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.tblw th{font:700 12px var(--ui);color:var(--muted)}
+
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -956,7 +966,7 @@ async function loadData() {
   const idx = await fetch('data/index.json').then(r => r.json());
   D.rad = await fetch('data/radicals.json').then(r => r.json()).catch(() => null);
   D.stages = idx.stages;
-  for (const st of D.stages) for (const m of st.unitsMeta || []) m.lessons = m.lessons || [...m.ls].map(c => `l.${m.id}.${c}`);
+  for (const st of D.stages) for (const m of st.unitsMeta || []) m.lessons = m.lessons || m.ls.split(",").map(c => `l.${m.id}.${c}`);
   const files = idx.stages.filter(s => !s.pack).flatMap(s => s.units);
   const units = await Promise.all(files.map(f => fetch('data/' + f).then(r => r.json()).catch(e => { console.warn('unit failed', f, e); return null; })));
   D.syl = await fetch('data/syllables.json').then(r => r.json()).catch(() => ({}));
@@ -968,10 +978,12 @@ async function loadData() {
   for (const it of META.custom || []) addItem(it);
   // HSK levels you've started (cards or lessons), plus the one you're heading into
   const need = new Set();
-  for (const c of CARDS.values()) { const m = /^h(\d)\./.exec(c.item || ''); if (m) need.add(10 + +m[1]); }
-  for (const k of Object.keys(META.progress.lessons)) { const m = /^l\.h(\d)u/.exec(k); if (m) need.add(10 + +m[1]); }
+  for (const c of CARDS.values()) { const m = /^k(\d)\./.exec(c.item || ''); if (m) need.add(10 + +m[1]); }
+  for (const k of Object.keys(META.progress.lessons)) { const id = (/^l\.(k\d{3})\./.exec(k) || [])[1]; const st = id && D.stages.find(x => (x.unitsMeta || []).some(m => m.id === id)); if (st) need.add(st.n); }
   if (META.track === 'hsk') need.add(hskFrontier());
   await Promise.all([...need].map(ensurePack));
+  const orphan = [...CARDS.values()].filter(c => !D.items.has(c.item) && !D.ex.has(c.item) && !D.sent.has(c.item));
+  if (orphan.length) { orphan.forEach(c => { CARDS.delete(c.id); delete META.weak[c.id]; }); await DB.replaceAll([...CARDS.values()], META); }
 }
 const PACKS = new Map();
 const hskStages = () => D.stages.filter(s => s.track === 'hsk');
@@ -1429,20 +1441,20 @@ function renderStreak() {
   const st = META.streak, live = st.last === dayKey() || st.last === dayKey(Date.now() - 864e5), n = live ? st.n : 0;
   $('#streak').innerHTML = `<span class="sn${st.last === dayKey() ? '' : ' off'}" title="Streak">${n}</span>天<span>&nbsp;·&nbsp;${dueCards().length} 待复习</span>`;
 }
-function lookalikes(it) { // characters sharing a component/radical with this single character
+function lookalikes(it) { // the plan's hand-picked look-alikes first, then characters sharing a component/radical
   const ch = D.chars.get(it.s);
-  if (!ch) return [];
+  if (!ch) return it.look || [];
   const parts = new Set([ch.r, ...(ch.c || [])].filter(Boolean));
   const out = [];
   for (const [c, v] of D.chars) if (c !== it.s && ([v.r, ...(v.c || [])].some(x => parts.has(x)) || (v.c || []).includes(it.s))) out.push(c);
-  return out;
+  return [...new Set([...(it.look || []), ...out])];
 }
 function family(c) { return [...D.items.values()].filter(it => it.k !== 'syl' && it.s.includes(c) && it.s !== c).slice(0, 14); }
 function chooseKind(c, it, mode) {
   const sk = c.skill, s = c.st === 2 ? c.s : 0, first = c.reps === 0 && mode !== 'check' && mode !== 'exam';
   if (sk === 'drill') return 'drill';
   if (it.k === 'syl') return sk === 'listening' ? 'toneId' : 'shadow';
-  if (sk === 'reading') { if (first) return 'mcMeaning'; if ((it.ex || []).some(e => e.zh.includes(it.s))) { const r = Math.random(); if (r < 0.2) return 'cloze'; if (r < 0.32) return 'buildSentence'; } if (it.mw && s > 2 && Math.random() < 0.25) return 'mwFill'; if (it.ex && it.ex.length && s > 7 && Math.random() < 0.3) return 'sentMeaning'; return s < 4 ? 'mcMeaning' : Math.random() < 0.7 ? 'flash' : 'typePinyin'; }
+  if (sk === 'reading') { if (first) return 'mcMeaning'; { const r = Math.random(); if (it.rad && r < 0.15) return 'nameRad'; if (it.words && r < 0.3) return 'wordBuild'; if (it.k === 'char' && r < 0.4) return 'pyToChar'; } if ((it.ex || []).some(e => e.zh.includes(it.s))) { const r = Math.random(); if (r < 0.2) return 'cloze'; if (r < 0.32) return 'buildSentence'; } if (it.mw && s > 2 && Math.random() < 0.25) return 'mwFill'; if (it.ex && it.ex.length && s > 7 && Math.random() < 0.3) return 'sentMeaning'; return s < 4 ? 'mcMeaning' : Math.random() < 0.7 ? 'flash' : 'typePinyin'; }
   if (sk === 'writing') {
     const one = [...it.s].filter(Core.isHan).length === 1, ch = D.chars.get(it.s);
     if (first) return one && ch && (ch.c || []).length >= 2 && Math.random() < 0.5 ? 'assemble' : 'trace';
@@ -1634,6 +1646,7 @@ function exIntro(host, it) {
     ${chs.map(c => { const v = D.chars.get(c); return v ? `<p class="small"><b class="hz" style="font-size:20px">${c}</b> ${esc(v.p)} · ${esc(v.m)}${v.c && v.c.length ? ` · ${esc(v.c.join(' + '))}` : ''}${v.r ? ` · ${radLink(v, c)}` : ''}<br><span class="muted">${esc(v.h || '')}</span></p>` : ''; }).join('')}
     ${it.note ? `<p class="small">${ic('hint')} ${esc(it.note)}</p>` : ''}
     ${(it.ex || []).map(e => `<div class="card" style="margin:6px 0"><div class="hz tc" style="font-size:19px">${rubyHTML(e.zh, e.p)}</div><div class="small muted">${esc(e.en)}</div><button class="btn sm" data-act="say" data-t="${esc(e.zh)}">${ic('play')}</button></div>`).join('')}
+    ${it.words ? `<div class="iwords">${it.words.map(w => `<button class="iw" data-act="say" data-t="${esc(w[0])}"><b class="hz">${esc(w[0])}</b><span>${esc(w[1])}</span><small>${esc(w[2])}</small></button>`).join('')}</div>` : ''}
     ${it.col && it.col.length ? `<p class="small">搭配: ${it.col.map(esc).join(' · ')}</p>` : ''}
     ${chs.length === 1 && family(chs[0]).length ? `<p class="small">词族: ${family(chs[0]).map(f => esc(f.s)).join(' · ')}</p>` : ''}
     </div><button class="btn pri block" data-r="next">记住了 Next</button>`;
@@ -1773,6 +1786,33 @@ EX.toneId = (host, it, cb) => {
   setTimeout(() => say(it.s, 0.75), 200);
   bindMC(host, opts, opts.indexOf(right), cb, o => { const cit = ts.map(s => Core.markSyl(s.base, s.tone)).join(' '); return o === cit && cit !== right ? `That's how it's <i>written</i>. Spoken it changes: ${esc(right)} (tone sandhi).` : `You heard ${esc(right)}.`; });
 };
+// name the radical (the meaning part) of a character
+EX.nameRad = (host, it, cb) => {
+  const pool = [...new Set([...D.items.values()].map(x => x.rad).concat(((D.rad || {}).list || []).map(r => r.f)).filter(r => r && r !== it.rad))];
+  const opts = shuffle([it.rad, ...sample(pool, 3)]);
+  host.innerHTML = `<p class="muted center">部首 · Which part is the radical?</p><div class="big md hz">${esc(it.s)}</div><p class="center small muted">${esc(it.en)}</p><div class="grid2">${opts.map((o, i) => `<button class="opt center hz" style="font-size:34px" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
+  bindMC(host, opts, opts.indexOf(it.rad), cb, () => `<b class="hz">${esc(it.s)}</b> = ${esc(it.rad)}${it.comp ? ' + ' + esc(it.comp) : ''}.`);
+};
+// pinyin → character, with look-alikes and same-sound characters as distractors
+EX.pyToChar = (host, it, cb) => {
+  const same = [...D.items.values()].filter(x => x.s !== it.s && x.k === it.k && x.p.replace(/\d/g, '') === it.p).map(x => x.s);
+  const near = [...D.items.values()].filter(x => x.unit === it.unit && x.s !== it.s && [...x.s].length === [...it.s].length).map(x => x.s);
+  const opts = shuffle([it.s, ...sample([...new Set([...lookalikes(it), ...same])].filter(x => x !== it.s && [...x].length === [...it.s].length), 2), ...sample(near, 3)].filter((x, i, a) => a.indexOf(x) === i).slice(0, 4));
+  host.innerHTML = `<p class="muted center">Which character is <b class="tc">${pyHTML(it.s, it.p)}</b>?</p><p class="center small muted">${esc(it.en)}</p><div class="grid2">${opts.map((o, i) => `<button class="opt center hz" style="font-size:30px" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
+  bindMC(host, opts, opts.indexOf(it.s), cb);
+};
+// build a word from character tiles (with decoys)
+EX.wordBuild = (host, it, cb) => {
+  const w = it.words && it.words.length ? pick(it.words) : [it.s, it.p, it.en];
+  const chars = [...w[0]].filter(Core.isHan); if (chars.length < 2) return EX.pyToChar(host, it, cb);
+  const decoys = sample([...new Set([...lookalikes(it), ...[...D.items.values()].filter(x => x.unit === it.unit).flatMap(x => [...x.s])])].filter(c => Core.isHan(c) && !chars.includes(c)), 3);
+  const pool = shuffle([...chars, ...decoys]); const got = [];
+  host.innerHTML = `<p class="muted center">词 · Build the word</p><div class="card center" style="font-size:19px">${esc(w[2])}</div><div class="answer tiles" data-r="ans" style="min-height:58px"></div><div class="tiles">${pool.map((c, i) => `<button class="tile" data-i="${i}">${esc(c)}</button>`).join('')}</div><button class="btn sm" data-r="clr">Clear</button>`;
+  const ans = $('[data-r=ans]', host);
+  $$('.tiles:not(.answer) .tile', host).forEach(b => b.onclick = () => { if (b.classList.contains('used')) return; b.classList.add('used'); got.push(pool[+b.dataset.i]); ans.insertAdjacentHTML('beforeend', `<span class="tile">${esc(pool[+b.dataset.i])}</span>`);
+    if (got.length === chars.length) { const ok = got.join('') === chars.join(''); cb({ ok, why: `<span class="hz" style="font-size:20px">${esc(w[0])}</span> ${esc(w[1])}: ${esc(w[2])}` }); say(w[0]); } });
+  $('[data-r=clr]', host).onclick = () => { got.length = 0; ans.innerHTML = ''; $$('.tile.used', host).forEach(b => b.classList.remove('used')); };
+};
 EX.flash = (host, it, cb) => { // see the word, recall the meaning, then check yourself
   host.innerHTML = `<p class="muted center">What does it mean? Think, then check.</p>${itemHead(it, { py: 'hide' })}<button class="btn pri block" data-r="show">Show meaning</button>`;
   $('[data-r=show]', host).onclick = () => { $('[data-r=show]', host).remove(); say(it.s);
@@ -1811,9 +1851,9 @@ EX.speakSentence = (host, it, cb) => {
 // --- authored drills ---
 // sentence card: hear it → meaning; English → say it (or type pinyin); dictation; build from tiles
 const sentPool = sx => { const all = [...D.sent.values()].filter(x => x.en !== sx.en); const near = all.filter(x => x.unit === sx.unit); return near.length >= 3 ? near : all; };
-function EXS(host, sx, cb, c) {
+function EXS(host, sx, cb, c, force) {
   const st = c && c.st === 2 ? c.s : 0, r = Math.random(), rate = Math.max(0.85, S().rate);
-  const kind = !c || c.reps <= 1 ? 'hear' : r < 0.32 ? 'hear' : r < 0.7 ? 'say' : st > 6 && r < 0.84 ? 'dict' : 'build';
+  const kind = force || (!c || c.reps <= 1) ? force || 'hear' : r < 0.32 ? 'hear' : r < 0.7 ? 'say' : st > 6 && r < 0.84 ? 'dict' : 'build';
   const reveal = `<div class="hz tc" style="font-size:20px;margin:6px 0">${rubyHTML(sx.zh, sx.p)} <button class="lplay" data-act="say" data-t="${esc(sx.zh)}" aria-label="Play">${ic('play')}</button></div><div class="small muted">${esc(sx.en)}</div>`;
   const done = res => cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + reveal });
   if (kind === 'hear') {
@@ -1865,6 +1905,18 @@ function exDrill(host, x, cb) {
     const opts = x.o.map((o, i) => ({ o, i })); shuffle(opts);
     host.innerHTML = `<p class="muted center">${T === 'fix' ? 'Which sentence fixes the mistake?' : T === 'syn' ? 'Pick the right word' : 'Fill in the blank'}</p><div class="card hz" style="font-size:22px">${esc(x.q)}</div>${x.en ? `<p class="center muted small">${esc(x.en)}</p>` : ''}${mcHTML(opts, o => `<span class="hz" style="font-size:20px">${esc(o.o)}</span>`)}`;
     return bindMC(host, opts, opts.findIndex(o => o.i === x.a), r => cb({ ...r, why: (r.ok ? '' : `Answer: <b class="hz">${esc(x.o[x.a])}</b><br>`) + why }));
+  }
+  if (T === 'error') { // find and fix the mistake: write the corrected sentence
+    host.innerHTML = `<p class="muted center">改错 · Find and fix the mistake</p><div class="card hz center" style="font-size:22px">${esc(x.q)}</div><input type="text" data-r="in" placeholder="Write the corrected sentence" autocomplete="off" value="${esc(x.q)}"><div class="row" style="margin-top:6px"><button class="btn" data-r="give">Show answer</button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
+    const judge = v => { const ok = Core.normZh(v) === Core.normZh(x.ans); cb({ ok, why: `<span class="hz" style="font-size:20px">${Core.charDiff(v, x.ans).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span><br>Answer: <b class="hz">${esc(x.ans)}</b>${why ? '<br>' + why : ''}` }); say(x.ans); };
+    $('[data-r=go]', host).onclick = () => judge($('[data-r=in]', host).value); $('[data-r=give]', host).onclick = () => judge('');
+    return;
+  }
+  if (T === 'dialogue') { // hear line A, choose the reply
+    const opts = x.o.map((o, i) => ({ o, i })); shuffle(opts);
+    host.innerHTML = `<p class="muted center">对话 · Choose the reply</p><div class="card hz center" style="font-size:22px">${esc(x.q)}</div>${audioBtns(x.q)}${mcHTML(opts, o => `<span class="hz" style="font-size:19px">${esc(o.o)}</span>`)}`;
+    setTimeout(() => say(x.q), 200);
+    return bindMC(host, opts, opts.findIndex(o => o.i === x.a), r => { cb({ ...r, why: `A: <span class="hz">${esc(x.q)}</span><br>B: <b class="hz">${esc(x.o[x.a])}</b>` }); say(x.o[x.a]); });
   }
   if (T === 'order') {
     const toks = Core.segment(x.zh, D.dict).reduce((a, t) => { const last = a[a.length - 1]; if (!t.hit && last && !last.hit && Core.isHan(t.w[0]) && Core.isHan(last.w[0])) last.w += t.w; else a.push({ ...t }); return a; }, []).map(t => t.w).filter(w => Core.isHan(w[0]));
@@ -1953,13 +2005,18 @@ function unitUnlocked(u) {
 }
 function lessonUnlocked(l) { const u = D.unitById.get(l.unit), i = u.lessons.indexOf(l); return unitUnlocked(u) && (i === 0 || lessonDone(u.lessons[i - 1].id) || S().unlockAll); }
 function nextLesson() { // the track you're in comes first; units whose checkpoint is passed count as done
-  const order = META.track === 'hsk' ? [...hskStages(), ...D.stages.filter(s => !s.track)] : D.stages;
+  const order = META.track === 'hsk' ? [...hskStages(), ...D.stages.filter(s => s.track !== 'hsk')] : D.stages;
   for (const st of order) for (const u of unitsOfStage(st.n)) { if (!unitUnlocked(u) || unitPassed(u)) continue; for (const l of u.lessons) if (!lessonDone(l.id)) return l; }
   return null;
 }
 function markLesson(l) { META.progress.lessons[l.id] = Date.now(); save(); }
 function startLesson(l) {
   if (l.type === 'pinyin') return go(`#pinyin/${l.id}`);
+  if (l.type === 'info') return startSession([{ kind: 'info', html: l.html }], 'lesson', { onDone: () => { markLesson(l); go('#unit/' + l.unit); } });
+  if (l.type === 'review') { // review / final test across several units; 85% to pass
+    const us = (l.units || []).map(id => D.unitById.get(id)).filter(Boolean);
+    return startSession(us.some(u => (u.sents || []).length) ? bankTasks(us, l.n || 40) : examTasks(us.flatMap(u => u.items), us.flatMap(u => u.exercises || []), l.n || 40), 'check', { onDone: (pct, s) => { if (pct >= 85) markLesson(l);
+      doneScreen(pct >= 85 ? { seal: '温故知新', title: '通过！', sub: esc(l.title), stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit } : { seal: '再接再厉', pass: false, title: `${pct}%`, sub: 'Review needs 85%. Practise your mistakes, then try again.', stats: sesStats(s), cta: 'Back to unit', href: '#unit/' + l.unit }); } }); }
   if (l.type === 'text') return go(`#text/${l.text}/${l.id}`);
   if (l.type === 'scenario') return go(`#scen/${D.unitById.get(l.unit).scenario.id}/${l.id}`);
   META.track = (D.unitById.get(l.unit) || {}).track || 'core';
@@ -2003,6 +2060,8 @@ function startLesson(l) {
     practice.push(T(it, 'reading', exWith(it).length ? 'cloze' : 'mcMeaning'), T(it, 'listening', 'listenMC'), T(it, 'speaking', it.k === 'rad' ? null : 'speakMeaning'));
     if ([...it.s].filter(Core.isHan).length === 1) practice.push(T(it, 'writing', 'trace'));
     const ch = it.k === 'char' && D.chars.get(it.s); if (ch && (ch.c || []).length >= 2) practice.push(T(it, 'writing', 'assemble'));
+    if (it.rad && it.k === 'char') practice.push(T(it, 'reading', 'nameRad'));
+    if (it.words) practice.push(T(it, 'reading', 'wordBuild'));
   }
   withEx.slice(0, 3).forEach(it => practice.push(T(it, 'listening', 'listenSentence')));
   withEx.slice(3, 6).concat(withEx.length < 4 ? withEx.slice(0, 2) : []).forEach(it => practice.push(T(it, 'reading', 'buildSentence')));
@@ -2027,8 +2086,45 @@ function examTasks(items, exs, n) {
   for (const x of sample(exs, Math.ceil(n / 5))) tasks.push({ ex: x.id, item: x.id, card: null });
   return shuffle(tasks).slice(0, n);
 }
+// 25 per unit: 6 write · 4 fill · 3 spot the mistake · 3 word order · 2 translate · 2 dictation · 2 assemble · 2 error/dialogue · 1 speak
+// (scaled for 40-question reviews and the 60-question final); weakest items take half the item slots; no sentence twice
+function bankTasks(us, n) {
+  const items = us.flatMap(u => u.items).filter(it => it.k !== 'syl' && it.k !== 'rad'), sents = shuffle(us.flatMap(u => u.sents || [])), exs = shuffle(us.flatMap(u => u.exercises || []).filter(x => x.type === 'error' || x.type === 'dialogue'));
+  const lapse = it => SKILLS.reduce((a, sk) => a + ((CARDS.get(it.id + '|' + sk) || {}).lapses || 0), 0);
+  const weak = items.slice().sort((a, b) => lapse(b) - lapse(a)), pickItem = (k, f = () => true) => { const pool = (k % 2 ? shuffle(items.slice()) : weak).filter(f); return pool[0] && (items.splice(items.indexOf(pool[0]), 1), weak.splice(weak.indexOf(pool[0]), 1), pool[0]); };
+  const tmp = (it, sk) => ({ ...(CARDS.get(it.id + '|' + sk) || Core.newCard(it.id + '|' + sk, sk)), item: it.id, reps: 3 });
+  const itemByChar = c => [...D.items.values()].find(x => x.s === c && x.look);
+  const custom = run => ({ kind: 'custom', run });
+  const f = n / 25, cnt = k => Math.max(1, Math.round(k * f)), tasks = [];
+  const take = () => sents.pop();
+  for (let k = 0; k < cnt(6); k++) { const it = pickItem(k); if (it) tasks.push({ item: it.id, card: null, kind: 'handwrite', tmpCard: tmp(it, 'writing') }); }
+  for (let k = 0; k < cnt(2); k++) { const it = pickItem(k, x => (D.chars.get(x.s) || {}).c && D.chars.get(x.s).c.length >= 2) || pickItem(k); if (it) tasks.push({ item: it.id, card: null, kind: (D.chars.get(it.s) || {}).c ? 'assemble' : 'pickChar', tmpCard: tmp(it, 'writing') }); }
+  for (let k = 0; k < cnt(4); k++) { const sx = take(); if (!sx) break; tasks.push(custom((host, cb) => {
+    const t = (sx.tg || []).find(x => sx.zh.includes(x)) || us.flatMap(u => u.items).map(x => x.s).filter(w => sx.zh.includes(w)).sort((a, b) => b.length - a.length)[0] || [...sx.zh].find(Core.isHan);
+    const it = itemByChar(t) || { s: t, look: [] };
+    const others = [...new Set([...(it.look || []), ...lookalikes(it), ...us.flatMap(u => u.items).map(x => x.s)])].filter(x => x !== t && [...x].length === [...t].length && !sx.zh.includes(x));
+    const opts = shuffle([t, ...sample(others, 3)]);
+    host.innerHTML = `<p class="muted center">填空 · Fill the blank</p><div class="cloze hz">${esc(sx.zh).replace(esc(t), '<span class="gap">　　</span>')}</div><p class="center small muted">${esc(sx.en)}</p>${mcHTML(opts, o => `<span class="hz" style="font-size:22px">${esc(o)}</span>`)}`;
+    bindMC(host, opts, opts.indexOf(t), r => cb({ ...r, noAudio: true, why: `<span class="hz">${esc(sx.zh)}</span>` }));
+  })); }
+  for (let k = 0; k < cnt(3); k++) { const sx = take(); if (!sx) break; tasks.push(custom((host, cb) => { // spot the swapped look-alike
+    const cs = [...sx.zh], cand = cs.map((c, i) => [c, i, itemByChar(c)]).filter(([c, , it]) => it && (it.look || []).length);
+    if (!cand.length) return exDrill(host, { type: 'order', zh: sx.zh, p: sx.p, en: sx.en }, cb);
+    const [c, i, it] = pick(cand), wrong = pick(it.look); cs[i] = wrong;
+    host.innerHTML = `<p class="muted center">找错 · Tap the wrong character</p><p class="center small muted">${esc(sx.en)}</p><div class="spot hz">${cs.map((x, j) => Core.isHan(x) ? `<button class="sc" data-j="${j}">${esc(x)}</button>` : `<span>${esc(x)}</span>`).join('')}</div>`;
+    $$('.sc', host).forEach(b => b.onclick = () => { $$('.sc', host).forEach(x => x.disabled = true); const ok = +b.dataset.j === i; b.classList.add(ok ? 'ok' : 'no'); $$('.sc', host)[$$('.sc', host).findIndex(x => +x.dataset.j === i)].classList.add('ok');
+      cb({ ok, noAudio: true, why: `<b class="hz">${esc(wrong)}</b> should be <b class="hz">${esc(c)}</b>: <span class="hz">${esc(sx.zh)}</span>` }); });
+  })); }
+  for (let k = 0; k < cnt(3); k++) { const sx = take(); if (sx) tasks.push(custom((host, cb) => exDrill(host, { type: 'order', zh: sx.zh, p: sx.p, en: sx.en }, cb))); }
+  for (let k = 0; k < cnt(2); k++) { const sx = take(); if (sx) tasks.push(custom((host, cb) => exDrill(host, { type: 'translate', en: sx.en, a: [sx.zh], p: sx.p }, cb))); }
+  for (let k = 0; k < cnt(2); k++) { const sx = take(); if (sx) tasks.push(custom((host, cb) => EXS(host, sx, cb, null, 'dict'))); }
+  for (let k = 0; k < cnt(2); k++) { const x = exs.pop(); if (x) tasks.push(custom((host, cb) => exDrill(host, x, cb))); }
+  for (let k = 0; k < cnt(1); k++) { const sx = take(); if (sx) tasks.push(custom((host, cb) => EXS(host, sx, cb, null, 'say'))); }
+  while (tasks.length < n && items.length) { const it = pickItem(tasks.length); tasks.push({ item: it.id, card: null, kind: pick(['mcMeaning', 'listenMC', 'pyToChar']), tmpCard: tmp(it, 'reading') }); }
+  return shuffle(tasks).slice(0, n);
+}
 function startCheckpoint(u) {
-  const tasks = examTasks(u.items, u.exercises || [], 24);
+  const tasks = (u.sents || []).length ? bankTasks([u], 25) : examTasks(u.items, u.exercises || [], 24);
   startSession(tasks, 'check', { onDone: (pct, s) => {
     const prev = META.progress.units[u.id] || 0; META.progress.units[u.id] = Math.max(prev, pct); save();
     doneScreen(pct >= 85 ? { seal: '过关斩将', title: '通过！', sub: `${esc(u.title)} checkpoint passed. The next unit is open.`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + u.id }
@@ -2134,9 +2230,9 @@ function forecastHTML(days) {
   return `<div class="fc">${counts.map((n, i) => `<div style="height:${n / mx * 100}%" title="${n} due">${n ? `<b>${n}</b>` : ''}<span>${i === 0 ? '今' : '+' + i}</span></div>`).join('')}</div><div style="height:26px"></div>`;
 }
 function coreCourseHTML() {
-  return D.stages.filter(st => !st.track).map(st => {
+  return D.stages.filter(st => st.track !== 'hsk').map(st => {
     const us = unitsOfStage(st.n), open = st.n === 1 || stagePassed(st.n - 1) || S().unlockAll;
-    return `<div class="card ${open ? '' : 'lock'}"><div class="row"><b class="grow hz">第${st.n}阶段 ${esc(st.title)}</b><span class="small muted">${esc(st.en)}</span></div>
+    return `<div class="card ${open ? '' : 'lock'}"><div class="row"><b class="grow hz">${esc(st.title)}</b><span class="small muted">${esc(st.en)}</span></div>
     ${us.length ? `<div class="list">${us.map(u => { const ok = unitUnlocked(u), sc = META.progress.units[u.id]; const done = u.lessons.filter(l => lessonDone(l.id)).length;
       return `<a href="#unit/${u.id}" class="${ok ? '' : 'lock'}"><span class="unum">${Core.numToZh(u.n)}</span><span class="grow"><span class="hz">${esc(u.title)}</span> <span class="small muted">${esc(u.en)}</span><span class="ubar"><i style="width:${done / u.lessons.length * 100}%"></i></span><span class="small muted">${done}/${u.lessons.length} lessons${sc != null ? ` · checkpoint ${sc}%` : ''}</span></span>${sc >= 85 ? ic('check') : ok ? ic('chev') : ic('lock')}</a>`; }).join('')}</div>
       <button class="btn block" data-act="exam" data-n="${st.n}" ${us.every(unitPassed) || S().unlockAll ? '' : 'disabled'}>阶段考试 Stage exam${META.progress.stages[st.n] != null ? ` · best ${META.progress.stages[st.n]}%` : ''}</button>`
@@ -2157,7 +2253,7 @@ function hskCourseHTML() {
         return `<a href="#unit/${m.id}" class="${ok ? '' : 'lock'}"><span class="unum">${m.n}</span><span class="grow"><span class="hz">${esc(m.title)}…</span> <span class="small muted">${esc(m.en)}</span><span class="ubar"><i style="width:${done / m.lessons.length * 100}%"></i></span><span class="small muted">${done}/${m.lessons.length} lessons${sc != null ? ` · checkpoint ${sc}%` : ''}</span></span>${sc >= 85 ? ic('check') : ok ? ic('chev') : ic('lock')}</a>`; }).join('')}</div></details>`;
   }).join('');
 }
-V.course = () => { view.innerHTML = `${ph('课程', 'Course')}<div class="seg trackseg" role="radiogroup" aria-label="Course track"><button role="radio" data-tr="core" aria-checked="${META.track !== 'hsk'}">成长 Growing up</button><button role="radio" data-tr="hsk" aria-checked="${META.track === 'hsk'}">HSK 1–9</button></div><div id="trk"></div>`;
+V.course = () => { view.innerHTML = `${ph('课程', 'Course')}<div class="seg trackseg" role="radiogroup" aria-label="Course track"><button role="radio" data-tr="core" aria-checked="${META.track !== 'hsk'}">部首 Part 1</button><button role="radio" data-tr="hsk" aria-checked="${META.track === 'hsk'}">HSK 1–9</button></div><div id="trk"></div>`;
   const draw = () => { $('#trk').innerHTML = META.track === 'hsk' ? hskCourseHTML() : coreCourseHTML(); $$('[data-tr]').forEach(b => b.setAttribute('aria-checked', String((b.dataset.tr === 'hsk') === (META.track === 'hsk')))); };
   $$('[data-tr]').forEach(b => b.onclick = () => { META.track = b.dataset.tr; save(); draw(); });
   draw();
@@ -2180,8 +2276,9 @@ V.unit = id => {
     return ensurePack(st.n).then(() => location.hash === '#unit/' + id && V.unit(id), () => { view.innerHTML = `<div class="card">Couldn't load ${esc(st.title)}. Connect once, then it works offline.</div>`; }); }
   const ok = unitUnlocked(u), done = u.lessons.filter(l => lessonDone(l.id)).length;
   const cur = u.lessons.find(l => !lessonDone(l.id) && lessonUnlocked(l));
-  const kind = { new: '生词', text: '阅读', drill: '练习', scenario: '情景', pinyin: '拼音' };
-  const detail = l => l.type === 'pinyin' ? 'initials, finals, tones' : l.type === 'new' ? `${(l.items || []).length} items` : l.type === 'drill' ? `${(l.ex || []).length} drills` : l.type === 'text' ? 'read and recite' : 'role-play';
+  const kind = { new: '生词', text: '阅读', drill: '练习', scenario: '情景', pinyin: '拼音', info: '讲解', review: '测验' };
+  const lglyph = { text: '读', drill: '练', scenario: '说', pinyin: '拼', info: '讲', review: '考' };
+  const detail = l => l.type === 'info' ? 'read first' : l.type === 'review' ? `${l.n || 40} questions · 85%` : l.type === 'pinyin' ? 'initials, finals, tones' : l.type === 'new' ? `${(l.items || []).length} items` : l.type === 'drill' ? `${(l.ex || []).length} drills` : l.type === 'text' ? 'read and recite' : 'role-play';
   const sc = META.progress.units[u.id];
   // the road: stops on a gentle sine, joined by one smooth curve; the walked part is drawn in vermilion
   const stops = u.lessons.map((l, i) => ({ l, i, st: lessonDone(l.id) ? 'done' : !lessonUnlocked(l) ? 'lock' : l === cur ? 'cur' : 'open' }));
@@ -2192,7 +2289,7 @@ V.unit = id => {
   const road = `<div class="road" style="aspect-ratio:340/${H}"><svg class="road-svg" viewBox="0 0 340 ${H}" aria-hidden="true"><path class="road-base" d="${curve(stops.length - 1)}"/>${reached ? `<path class="road-done" pathLength="1" d="${curve(reached)}"/>` : ''}</svg>
     ${stops.map((x, i) => { const side = X(i) >= 170 ? 'l' : 'r', pos = `left:${(X(i) / 340 * 100).toFixed(2)}%;top:${(Y(i) / H * 100).toFixed(2)}%`;
       if (x.check) return `<div class="rstop side-${side}" style="${pos}"><button class="rnode rcheck ${x.st}" data-act="${x.st === 'lock' ? '' : 'check'}" data-id="${u.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="Unit checkpoint, 85% to pass">考</button><div class="rlabel"><small>检测 · Checkpoint</small><b>单元检测</b><small>${sc != null ? `best ${sc}%` : '85% to pass'}</small></div></div>`;
-      const l = x.l, glyph = l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : { text: '读', drill: '练', scenario: '说', pinyin: '拼' }[l.type] || '学';
+      const l = x.l, glyph = l.type === 'new' ? ([...((D.items.get((l.items || [])[0]) || {}).s || '字')].find(Core.isHan) || '字') : lglyph[l.type] || '学';
       return `<div class="rstop side-${side}" style="${pos}"><button class="rnode ${x.st}" data-act="${x.st === 'lock' ? '' : 'lesson'}" data-id="${l.id}"${x.st === 'lock' ? ' disabled' : ''} aria-label="${esc(l.title)}${x.st === 'done' ? ', done' : x.st === 'lock' ? ', locked' : ''}">${x.st === 'done' ? ic('check') : x.st === 'lock' ? ic('lock') : glyph}</button><div class="rlabel"><small>${String(i + 1).padStart(2, '0')} · ${kind[l.type] || ''}</small><b>${esc(l.title)}</b>${x.st === 'cur' ? '<span class="go">开始</span>' : `<small>${detail(l)}</small>`}</div></div>`; }).join('')}</div>`;
   view.innerHTML = `<section class="uhead"><div class="vnum" aria-hidden="true">第${Core.numToZh(u.n)}单元</div><p class="meta">${u.track === 'hsk' ? esc((D.stages.find(x => x.n === u.stage) || {}).title) : `第${Core.numToZh(u.stage)}阶段`}</p><h2 class="display">${esc(u.title)}</h2><p class="en">${esc(u.en)}</p>
     <div class="uprog"><div class="bar"><i style="width:${done / u.lessons.length * 100}%"></i></div><span>${done} / ${u.lessons.length}</span></div></section>
@@ -2214,7 +2311,7 @@ V.text = (id, lessonId) => {
   if (S().pinyin === 'always') READ.py = true; else if (S().pinyin === 'never') READ.py = false; else if (READ.auto !== id) { READ.py = u.stage <= 2; READ.auto = id; }
   const poem = ['poem', 'rhyme', 'classical'].includes(t.kind);
   view.innerHTML = `<section class="uhead"><p class="meta">${esc({ rhyme: '儿歌', story: '故事', poem: '古诗', classical: '文言', essay: '散文', fable: '寓言', reading: '阅读' }[t.kind] || t.kind)}</p><h2 class="display">${esc(t.title)}</h2><p class="en">${esc(t.src || '')}${t.kind === 'classical' ? ' · 文言文 classical Chinese' : ''}</p></section>
-  <div class="row chips"><button class="chip ${READ.py ? 'on' : ''}" data-act="rpy">拼音</button><button class="chip ${READ.tr ? 'on' : ''}" data-act="rtr">译文</button><button class="chip" data-act="rall">${ic('play')} 全文</button><button class="chip" data-act="rall" data-r="0.6">${ic('play')} 慢</button><button class="chip" data-act="speed">${ic('timer')} 速读</button></div>
+  <div class="row chips"><button class="chip ${READ.py ? 'on' : ''}" data-act="rpy">拼音</button>${t.noTr ? '' : `<button class="chip ${READ.tr ? 'on' : ''}" data-act="rtr">译文</button>`}<button class="chip" data-act="rall">${ic('play')} 全文</button><button class="chip" data-act="rall" data-r="0.6">${ic('play')} 慢</button><button class="chip" data-act="speed">${ic('timer')} 速读</button></div>
   <div class="reader ${poem ? 'kai center' : ''} ${READ.py ? '' : 'nopy'} ${S().toneColors ? 'tc' : ''}" id="rd">${t.lines.map((l, i) => `<div class="ln" data-li="${i}">${rubyHTML(l.zh, l.p)} <button class="lplay" data-act="say" data-t="${esc(l.zh)}" aria-label="Play line">${ic('play')}</button></div><div class="tr" ${READ.tr ? '' : 'hidden'}>${esc(l.en)}${l.mod ? `<br>白话: ${esc(l.mod)}` : ''}</div>`).join('')}</div>
   ${(t.notes || []).length ? `<details class="card"><summary>${ic('note')}注释 Notes</summary>${t.notes.map(n => `<p class="small">${esc(n)}</p>`).join('')}</details>` : ''}
   <div class="tools">${poem ? `<button data-act="recite" data-id="${t.id}"><b>背诵</b><span>Recite</span></button>` : ''}<button data-act="lab" data-id="${t.id}"><b>听</b><span>Listen only</span></button><button data-act="writeText" data-id="${t.id}"><b>默写</b><span>Write from memory</span></button><button data-act="tquiz" data-id="${t.id}" data-l="${lessonId || ''}"><b>理解</b><span>Questions</span></button></div>

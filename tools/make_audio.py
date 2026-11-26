@@ -38,6 +38,7 @@ def collect(pack=None):
                 s = it['s']
                 han = HAN.findall(s)
                 for e in it.get('ex', []): texts.add(e['zh'])
+                for w in it.get('words', []): texts.add(w[0])
                 if len(han) == 1 and s.strip() == han[0]:
                     k = syl_key(it['p'].split()[0])
                     # human syllable recording exists, or neutral-tone single char (app plays its example), or a radical
@@ -52,6 +53,9 @@ def collect(pack=None):
                 if x['type'] == 'order': texts.add(x['zh'])
                 if x['type'] == 'translate': texts.add(x['a'][0])
                 if x['type'] == 'zaoju': texts.update(x['models'])
+                if x['type'] == 'dialogue': texts.add(x['q']); texts.update(x['o'])
+                if x['type'] == 'error': texts.add(x['ans'])
+            for x in u.get('sents', []): texts.add(x['zh'])
             sc = u.get('scenario')
             if sc:
                 for n in sc['nodes'].values():

@@ -13,7 +13,7 @@ const units = [];
 for (const st of idx.stages) {
   for (const f of st.units) { try { units.push(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))); } catch (e) { E(f, 'cannot parse: ' + e.message); } }
   if (st.pack) { try { const pk = JSON.parse(fs.readFileSync(path.join(dir, st.pack), 'utf8')); pk.units.forEach(u => units.push(u));
-    const ids = pk.units.map(u => u.id + ':' + u.lessons.map(l => l.id.split('.').pop()).join('')).join(), meta = (st.unitsMeta || []).map(m => m.id + ':' + m.ls).join(); if (ids !== meta) E(st.pack, 'unitsMeta out of sync with the pack'); } catch (e) { E(st.pack, 'cannot parse: ' + e.message); } }
+    const ids = pk.units.map(u => u.id + ':' + u.lessons.map(l => l.id.split('.').pop()).join(',')).join(), meta = (st.unitsMeta || []).map(m => m.id + ':' + m.ls).join(); if (ids !== meta) E(st.pack, 'unitsMeta out of sync with the pack'); } catch (e) { E(st.pack, 'cannot parse: ' + e.message); } }
 }
 const hskNote = { fewEx: 0, noChar: 0 };
 const allChars = new Map();
@@ -43,8 +43,8 @@ for (const u of units) {
     if (!['syl', 'rad'].includes(it.k)) {
       const wk = (u.track || 'core') + ':' + it.s; // a word may appear once per track
       if (words.has(wk)) E(U, `word 「${it.s}」 defined twice (${words.get(wk)})`); words.set(wk, it.id);
-      if (!(it.ex && it.ex.length >= 2) && it.k !== 'char') { if (u.track === 'hsk') hskNote.fewEx++; else Wn(U, `${it.id}: fewer than 2 examples`); }
-      for (const c of [...it.s].filter(C.isHan)) if (!allChars.has(c)) { if (u.track === 'hsk') hskNote.noChar++; else Wn(U, `char 「${c}」 (in ${it.id}) has no chars entry`); }
+      if (!(it.ex && it.ex.length >= 2) && it.k !== 'char') { if (u.track) hskNote.fewEx++; else Wn(U, `${it.id}: fewer than 2 examples`); }
+      for (const c of [...it.s].filter(C.isHan)) if (!allChars.has(c)) { if (u.track) hskNote.noChar++; else Wn(U, `char 「${c}」 (in ${it.id}) has no chars entry`); }
     }
     if (it.pair && !(u.items || []).some(x => x.id === it.pair)) E(U, `${it.id}: pair ${it.pair} not in unit`);
     (it.ex || []).forEach((e, i) => { checkPy(U, `${it.id} ex${i}`, e.zh, e.p); if (!e.en) E(U, `${it.id} ex${i} no en`); nLines++; if (!e.zh.includes(it.s.replace('儿', '')) && it.k !== 'syl') Wn(U, `${it.id} ex${i} doesn't contain the word: ${e.zh}`); });
@@ -55,7 +55,7 @@ for (const u of units) {
   }
   for (const t of u.texts || []) {
     reg(U, t.id, 'text');
-    t.lines.forEach((l, i) => { checkPy(U, `${t.id} line${i}`, l.zh, l.p); if (!l.en) E(U, `${t.id} line${i} no en`); nLines++; });
+    t.lines.forEach((l, i) => { checkPy(U, `${t.id} line${i}`, l.zh, l.p); if (!l.en && !t.noTr) E(U, `${t.id} line${i} no en`); nLines++; });
     (t.qs || []).forEach((q, i) => { if (q.o && (q.a == null || !q.o[q.a])) E(U, `${t.id} q${i} bad answer index`); if (!q.o && !q.ans) E(U, `${t.id} q${i} needs o/a or ans`); });
   }
   const exL = new Set();
@@ -70,6 +70,8 @@ for (const u of units) {
     else if (T === 'zaoju') { if (!x.w || !x.models || !x.models.every(s => s.includes(x.w))) E(U, `${x.id}: models must contain ${x.w}`); }
     else if (T === 'match') { if (!x.pairs || x.pairs.some(p => p.length !== 2)) E(U, `${x.id} pairs must be [a,b]`); }
     else if (T === 'essay') { if (!x.prompt) E(U, `${x.id} needs prompt`); }
+    else if (T === 'error') { if (!x.q || !x.ans || x.q === x.ans) E(U, `${x.id}: needs a wrong q and a different ans`); }
+    else if (T === 'dialogue') { if (!x.q || !Array.isArray(x.o) || x.o[x.a] == null) E(U, `${x.id}: needs q, o, a`); }
     else E(U, `${x.id}: unknown type ${T}`);
   }
   const sc = u.scenario;
@@ -82,8 +84,11 @@ for (const u of units) {
         (n.opts || []).forEach((o, i) => { checkPy(U, `${sc.id}.${k}.opt${i}`, o.zh, o.p); if (!sc.nodes[o.next]) E(U, `${sc.id}.${k}.opt${i} next "${o.next}" missing`); if (!o.en) E(U, `${sc.id}.${k}.opt${i} no en`); }); }
     }
   }
+  (u.sents || []).forEach((x, i) => { checkPy(U, `sent${i}`, x.zh, x.p); if (!x.en) E(U, `sent${i} no en`); });
   for (const l of u.lessons || []) {
     reg(U, l.id, 'lesson');
+    if (l.type === 'info' && !l.html) E(U, `${l.id}: info lesson without html`);
+    if (l.type === 'review') (l.units || []).forEach(id => !units.some(x => x.id === id) && E(U, `${l.id}: review unit ${id} missing`));
     (l.items || []).forEach(id => !local.has(id) && E(U, `${l.id}: item ${id} not in unit`));
     (l.ex || []).forEach(id => !exL.has(id) && E(U, `${l.id}: exercise ${id} not in unit`));
     if (l.type === 'text' && !(u.texts || []).some(t => t.id === l.text)) E(U, `${l.id}: text ${l.text} missing`);
