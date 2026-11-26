@@ -71,6 +71,9 @@ for (const u of units) {
     else if (T === 'match') { if (!x.pairs || x.pairs.some(p => p.length !== 2)) E(U, `${x.id} pairs must be [a,b]`); }
     else if (T === 'essay') { if (!x.prompt) E(U, `${x.id} needs prompt`); }
     else if (T === 'error') { if (!x.q || !x.ans || x.q === x.ans) E(U, `${x.id}: needs a wrong q and a different ans`); }
+    else if (T === 'mcq') { if (!x.q || !Array.isArray(x.o) || x.o[x.a] == null) E(U, `${x.id}: needs q, o, a`); }
+    else if (T === 'order2') { if (!Array.isArray(x.tok) || !x.a || !x.a.length) E(U, `${x.id}: needs tok, a`); }
+    else if (T === 'speak' || T === 'reply') { if (!(x.en || x.q) || !x.a || !x.a.length) E(U, `${x.id}: needs prompt and a`); }
     else if (T === 'dialogue') { if (!x.q || !Array.isArray(x.o) || x.o[x.a] == null) E(U, `${x.id}: needs q, o, a`); }
     else E(U, `${x.id}: unknown type ${T}`);
   }

@@ -1908,8 +1908,37 @@ function exDrill(host, x, cb) {
   }
   if (T === 'error') { // find and fix the mistake: write the corrected sentence
     host.innerHTML = `<p class="muted center">改错 · Find and fix the mistake</p><div class="card hz center" style="font-size:22px">${esc(x.q)}</div><input type="text" data-r="in" placeholder="Write the corrected sentence" autocomplete="off" value="${esc(x.q)}"><div class="row" style="margin-top:6px"><button class="btn" data-r="give">Show answer</button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
-    const judge = v => { const ok = Core.normZh(v) === Core.normZh(x.ans); cb({ ok, why: `<span class="hz" style="font-size:20px">${Core.charDiff(v, x.ans).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span><br>Answer: <b class="hz">${esc(x.ans)}</b>${why ? '<br>' + why : ''}` }); say(x.ans); };
+    const judge = v => { const ok = (x.alts || [x.ans]).some(a => Core.normZh(v) === Core.normZh(a)); cb({ ok, why: `<span class="hz" style="font-size:20px">${Core.charDiff(v, x.ans).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span><br>Answer: <b class="hz">${esc(x.ans)}</b>${why ? '<br>' + why : ''}` }); say(x.ans); };
     $('[data-r=go]', host).onclick = () => judge($('[data-r=in]', host).value); $('[data-r=give]', host).onclick = () => judge('');
+    return;
+  }
+  if (T === 'mcq') { // choose the right sentence / word
+    const opts = x.o.map((o, i) => ({ o, i })); shuffle(opts);
+    host.innerHTML = `<p class="muted center">选择 · Choose</p><div class="card center" style="font-size:19px">${esc(x.q)}</div>${mcHTML(opts, o => `<span class="hz" style="font-size:19px">${esc(o.o)}</span>`)}`;
+    return bindMC(host, opts, opts.findIndex(o => o.i === x.a), r => cb({ ...r, why: r.ok ? '' : `Answer: <b class="hz">${esc(x.o[x.a])}</b>` }));
+  }
+  if (T === 'order2') { // given tiles, any accepted order
+    const pool = shuffle(x.tok.map((w, i) => ({ w, i }))), got = [];
+    host.innerHTML = `<p class="muted center">排序 · Put the words in order</p><div class="answer tiles" data-r="ans"></div><div class="tiles">${pool.map((p, i) => `<button class="tile" data-i="${i}">${esc(p.w)}</button>`).join('')}</div><button class="btn sm" data-r="clr">Clear</button>`;
+    const ans = $('[data-r=ans]', host);
+    $$('.tiles:not(.answer) .tile', host).forEach(b => b.onclick = () => { if (b.classList.contains('used')) return; b.classList.add('used'); got.push(pool[+b.dataset.i].w); ans.insertAdjacentHTML('beforeend', `<span class="tile">${esc(pool[+b.dataset.i].w)}</span>`);
+      if (got.length === pool.length) { const ok = x.a.some(a => Core.normZh(a) === Core.normZh(got.join(''))); cb({ ok, why: `<span class="hz" style="font-size:20px">${x.a.map(esc).join(' / ')}</span>` }); say(x.a[0]); } });
+    $('[data-r=clr]', host).onclick = () => { got.length = 0; ans.innerHTML = ''; $$('.tile.used', host).forEach(b => b.classList.remove('used')); };
+    return;
+  }
+  if (T === 'speak' || T === 'reply') { // say it (or answer the line); open answers (…) are self-graded against the model
+    const open = x.a.some(a => a.includes('…'));
+    host.innerHTML = `<p class="muted center">${T === 'reply' ? '回答 · Answer out loud' : '说 · Say it in Chinese'}</p><div class="card center ${T === 'reply' ? 'hz' : ''}" style="font-size:20px">${esc(T === 'reply' ? x.q : x.en)}</div>${T === 'reply' ? audioBtns(x.q) : ''}<div data-r="sp"></div><button class="linkbtn" data-r="show">Show a model answer</button><div data-r="m"></div>`;
+    if (T === 'reply') setTimeout(() => say(x.q), 200);
+    const model = `Model: <span class="hz">${x.a.map(esc).join(' / ')}</span>`;
+    const self = () => { const m = $('[data-r=m]', host); m.innerHTML = `<div class="card hz center">${x.a.map(esc).join('<br>')}</div><div class="grid2"><button class="btn" data-r="n">${ic('close')} Not yet</button><button class="btn pri" data-r="y">${ic('check')} Said it</button></div>`;
+      $('[data-r=n]', m).onclick = () => cb({ ok: false, self: true, why: model }); $('[data-r=y]', m).onclick = () => cb({ ok: true, self: true, why: model }); say(x.a[0].replace(/…/g, '')); };
+    $('[data-r=show]', host).onclick = e => { e.target.remove(); self(); };
+    speakPanel($('[data-r=sp]', host), { zh: x.a[0].replace(/…/g, ''), p: '' }, r => {
+      if (r.self || open) return self();
+      const sim = Math.max(...x.a.map(a => Core.charSim(r.heard || '', a)));
+      cb({ ok: sim >= 0.7, grade: sim >= 0.9 ? 3 : sim >= 0.7 ? 2 : 1, noAudio: true, why: `You said: <span class="hz">${esc(r.heard || '—')}</span><br>${model}` });
+    });
     return;
   }
   if (T === 'dialogue') { // hear line A, choose the reply
@@ -2089,7 +2118,7 @@ function examTasks(items, exs, n) {
 // 25 per unit: 6 write · 4 fill · 3 spot the mistake · 3 word order · 2 translate · 2 dictation · 2 assemble · 2 error/dialogue · 1 speak
 // (scaled for 40-question reviews and the 60-question final); weakest items take half the item slots; no sentence twice
 function bankTasks(us, n) {
-  const items = us.flatMap(u => u.items).filter(it => it.k !== 'syl' && it.k !== 'rad'), sents = shuffle(us.flatMap(u => u.sents || [])), exs = shuffle(us.flatMap(u => u.exercises || []).filter(x => x.type === 'error' || x.type === 'dialogue'));
+  const items = us.flatMap(u => u.items).filter(it => it.k !== 'syl' && it.k !== 'rad'), sents = shuffle(us.flatMap(u => u.sents || [])), exs = shuffle(us.flatMap(u => u.exercises || []).filter(x => ['error', 'dialogue', 'reply', 'mcq'].includes(x.type)));
   const lapse = it => SKILLS.reduce((a, sk) => a + ((CARDS.get(it.id + '|' + sk) || {}).lapses || 0), 0);
   const weak = items.slice().sort((a, b) => lapse(b) - lapse(a)), pickItem = (k, f = () => true) => { const pool = (k % 2 ? shuffle(items.slice()) : weak).filter(f); return pool[0] && (items.splice(items.indexOf(pool[0]), 1), weak.splice(weak.indexOf(pool[0]), 1), pool[0]); };
   const tmp = (it, sk) => ({ ...(CARDS.get(it.id + '|' + sk) || Core.newCard(it.id + '|' + sk, sk)), item: it.id, reps: 3 });

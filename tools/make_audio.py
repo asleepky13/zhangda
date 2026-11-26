@@ -55,6 +55,8 @@ def collect(pack=None):
                 if x['type'] == 'zaoju': texts.update(x['models'])
                 if x['type'] == 'dialogue': texts.add(x['q']); texts.update(x['o'])
                 if x['type'] == 'error': texts.add(x['ans'])
+                if x['type'] in ('order2', 'speak', 'reply'): texts.update(t for t in x['a'] if '…' not in t)
+                if x['type'] == 'reply': texts.add(x['q'])
             for x in u.get('sents', []): texts.add(x['zh'])
             sc = u.get('scenario')
             if sc:

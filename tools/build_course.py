@@ -275,6 +275,78 @@ def theme_re(theme):
 
 stages, pk_known = [], set(p1_known)
 taken = set()
+
+# HSK 2 written out (course/hsk2.md): units 16-25 with words, grammar, dialogue, activities and a 50-question bank each
+W2 = {}
+_h2 = open(os.path.join(PLAN, 'hsk2.md'), encoding='utf-8').read()
+def _rows(t):
+    out = [[c.strip() for c in r.strip().strip('|').split('|')] for r in t.split('\n') if r.strip().startswith('|') and not re.fullmatch(r'[\s|:-]+', r.strip())]
+    return out[1:]
+for h, b in sections(_h2, r'^## H2-U(\d+): .*$'):
+    k = int(re.match(r'## H2-U(\d+)', h).group(1)); part = sections(b, r'^### .*$')
+    get = lambda name: next((v for kk, v in part if kk.startswith('### ' + name)), '')
+    W2[15 + k] = {'title': h.split(': ', 1)[1].strip(), 'goal': (re.search(r'Goal: (.*)', b) or [None, ''])[1].strip(), 'words': _rows(get('Words')), 'grammar': md_html(get('Grammar').strip()),
+                  'dialogue': re.findall(r'^([AB]): (.+?) \*(.+?)\*\s*$', get('Dialogue'), re.M), 'acts': md_html(get('Practice activities').strip()), 'qs': _rows(get('Question bank'))}
+reserved = {r[1] for w in W2.values() for r in w['words']}
+alts = lambda t: [x.strip() for x in t.split('‖') if x.strip()]
+def unit_written2(uid, N, lv, stage, title, review):
+    W = W2[N]; items, chars, exs = [], {}, []
+    sents = []
+    for r in W['qs']:
+        if r[1] == 'translate':
+            o = sent_obj(alts(r[3])[0], r[2])
+            if o and '…' not in o['zh']: sents.append(o)
+    for _, zh, en in W['dialogue']:
+        o = sent_obj(zh, en)
+        if o: sents.append(o)
+    words = [r for r in W['words'] if r[1] not in taken]
+    for r in words:
+        zh = r[1]; w = WORDS.get(zh)
+        py = pinyin(zh) or (' '.join(w['py']) if w else r[2])
+        it = {'id': f'k{lv}.{zh}', 'k': 'char' if len(zh) == 1 else 'word', 's': zh, 'p': py, 'en': r[3]}
+        if w and w['pos']: it['pos'] = w['pos']
+        if w and w['mw']: it['mw'] = w['mw']
+        ex = [{k_: e[k_] for k_ in ('zh', 'p', 'en')} for e in sents if zh in e['zh']][:2]
+        if len(ex) < 2: ex += tatoeba(zh, pk_known | {c for x in words for c in x[1]}, 4, 14, 2 - len(ex))
+        if ex: it['ex'] = ex
+        parts = [re.sub(r'\s*\(.*?\)', '', x).strip() for x in r[4].split('+')] if len(zh) == 1 and '+' in r[4] and ';' not in r[4] else []
+        if parts:
+            it['rad'] = parts[0]; it['comp'] = parts[-1]
+            chars[zh] = {'p': py, 'm': r[3], 'r': parts[0], 'c': parts}
+        items.append(it); taken.add(zh)
+    unit_words = [it['s'] for it in items]
+    fills = [r for r in W['qs'] if r[1] == 'fill']
+    for r in W['qs']:
+        qid, T, prompt, ans = r[0], r[1], r[2], r[3]
+        if T == 'fill':
+            hint = (re.search(r'\(([^)]*)\)\s*$', prompt) or [None, ''])[1]
+            q = re.sub(r'\s*\([^)]*\)\s*$', '', prompt).replace('（ ）', '＿＿').replace('（）', '＿＿')
+            pool = [f[3] for f in fills if f[3] != ans and len(f[3]) == len(ans)] + [wd for wd in unit_words if len(wd) == len(ans)]
+            pool = [x for x in dict.fromkeys(pool) if x != ans and x not in q]
+            o = random.sample(pool, min(3, len(pool))) + [ans]; random.shuffle(o)
+            exs.append({'id': qid, 'type': 'fill', 'q': q, 'o': o, 'a': o.index(ans), **({'en': hint} if hint else {})})
+        elif T == 'order':
+            exs.append({'id': qid, 'type': 'order2', 'tok': [t.strip() for t in prompt.split('/')], 'a': alts(ans)})
+        elif T == 'mcq':
+            m = re.split(r'\s*([A-D])\)\s*', prompt); q = m[0].strip(); opts = [m[i + 1].strip() for i in range(1, len(m) - 1, 2)]
+            exs.append({'id': qid, 'type': 'mcq', 'q': q.strip('"“”'), 'o': opts, 'a': 'ABCD'.index(ans.strip()[0])})
+        elif T == 'translate': exs.append({'id': qid, 'type': 'translate', 'en': prompt, 'a': alts(ans)})
+        elif T == 'fix': exs.append({'id': qid, 'type': 'error', 'q': prompt, 'ans': alts(ans)[0], 'alts': alts(ans)})
+        elif T == 'speak': exs.append({'id': qid, 'type': 'speak', 'en': prompt, 'a': alts(ans)})
+        elif T == 'reply': exs.append({'id': qid, 'type': 'reply', 'q': prompt, 'a': alts(ans)})
+    lessons = [{'id': f'l.{uid}.0', 'title': '语法 · Grammar', 'type': 'info', 'html': f'<p class="muted center">语法 · Grammar</p><h2 class="display" style="text-align:center">{W["title"]}</h2><p class="muted">{W["goal"]}</p>' + W['grammar'] + '<h3>Practice activities</h3>' + W['acts']}]
+    nl = math.ceil(len(items) / 7)
+    for li in range(nl):
+        grp = items[li * len(items) // nl:(li + 1) * len(items) // nl]
+        lessons.append({'id': f'l.{uid}.{li + 1}', 'title': '、'.join(x['s'] for x in grp[:4]) + ('…' if len(grp) > 4 else ''), 'type': 'new', 'items': [x['id'] for x in grp]})
+    texts = [{'id': f't.{uid}.dia', 'kind': 'dialogue', 'title': f'对话 · {W["title"]}', 'src': 'Read aloud, copy by hand, then rewrite it from the English', 'lines': [o for o in (sent_obj(zh, en) for _, zh, en in W['dialogue']) if o]}]
+    lessons.append({'id': f'l.{uid}.dia', 'title': '对话 · Dialogue', 'type': 'text', 'text': texts[0]['id']})
+    first = [x for x in exs if x['type'] in ('fill', 'order2', 'mcq')]; second = [x for x in exs if x not in first]
+    lessons.append({'id': f'l.{uid}.d', 'title': '练一练 · Fill, order, choose', 'type': 'drill', 'ex': [x['id'] for x in first]})
+    lessons.append({'id': f'l.{uid}.e', 'title': '练一练 · Translate, fix, speak, reply', 'type': 'drill', 'ex': [x['id'] for x in second]})
+    if review: lessons.append(review)
+    return {'id': uid, 'stage': stage, 'n': N, 'track': 'hsk', 'title': W['title'], 'en': f'{title} · Unit {N}', 'intro': f'<p>{W["goal"]}</p>', 'items': items, 'chars': chars, 'texts': texts, 'exercises': exs, 'lessons': lessons,
+            'sents': [{**e, 'tg': [w for w in unit_words if w in e['zh']]} for e in sents]}
 unit_no = 0
 for lv, stage, title, nunits in LEVELS:
     pool = sorted([w for w in WORDS.values() if w['lv'] == lv], key=lambda w: w['freq'])
@@ -301,15 +373,18 @@ for lv, stage, title, nunits in LEVELS:
                 if w and w['mw']: it['mw'] = w['mw']
                 taken.add(it['s'])
             pk_known |= {c for it in u['items'] for c in it['s']}
+        elif N in W2:  # HSK 2 units 16-25: the written plan
+            u = unit_written2(uid, N, lv, stage, title, review)
+            pk_known |= {c for it in u['items'] for c in it['s']}
         else:
-            size = math.ceil(len([w for w in pool if w['s'] not in taken]) / (nunits - k))
-            rest = [w for w in pool if w['s'] not in taken]
-            focus_words = [t for t in re.findall(r'[㐀-鿿]+', focus) if t in WORDS and t not in taken]
+            size = math.ceil(len([w for w in pool if w['s'] not in taken and w['s'] not in reserved]) / max(1, nunits - k))
+            rest = [w for w in pool if w['s'] not in taken and w['s'] not in reserved]
+            focus_words = [t for t in re.findall(r'[㐀-鿿]+', focus) if t in WORDS and t not in taken and t not in reserved]
             rx = theme_re(theme)
             themed = [w for w in rest if rx and rx.search(w['en'])] if rx else []
             pick, seenw = [], set()
             for w in [WORDS[t] for t in focus_words] + themed[:size // 2] + rest:
-                if w['s'] in seenw or w['s'] in taken: continue
+                if w['s'] in seenw or w['s'] in taken or w['s'] in reserved: continue
                 pick.append(w); seenw.add(w['s'])
                 if len(pick) >= size: break
             pick.sort(key=lambda w: w['freq'])
