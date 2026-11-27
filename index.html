@@ -1531,6 +1531,13 @@ function endSession() {
   const wrong = new Set(s.wrong);
   doneScreen({ seal: '温故知新', title: '复习完成', sub: wrong.size ? 'Missed words come back sooner. Tap one to study it.' : 'Every card answered. They\'ll come back when you\'re about to forget them.', stats: sesStats(s), cta: '继续 Continue', href: '#today', extra: recapHTML(s.tasks.map(t => t.item).filter(id => wrong.has(id)), wrong) });
 }
+// "can't listen now": each listening question has a non-listening stand-in for the rest of the session
+const NO_LISTEN = { listenMC: 'mcMeaning', listenType: 'pyToChar', toneId: 'mcMeaning', toneEar: 'mcMeaning', listenSentence: 'cloze', dictation: 'buildSentence' };
+function noListenLink(host) {
+  if (!SES || !host.closest('#ex')) return;
+  host.insertAdjacentHTML('beforeend', `<button class="linkbtn" data-r="nolisten">现在不方便听 · Can't listen now</button>`);
+  $('[data-r=nolisten]', host).onclick = () => { speechSynthesis && speechSynthesis.cancel(); SES.noListen = true; toast('Listening paused for this session'); renderTask(); };
+}
 function renderTask() {
   const s = SES;
   if (!s) return go('#today');
@@ -1563,8 +1570,9 @@ function renderTask() {
   const it = D.items.get(t.item);
   if (!it || !c) return skip();
   t.kind = t.kind || chooseKind(c, it, s.mode);
+  if (s.noListen && NO_LISTEN[t.kind]) t.kind = NO_LISTEN[t.kind];
   if (c.leech && FSRS_MODES.has(s.mode)) host.insertAdjacentHTML('beforebegin', leechHelp(it));
-  try { (EX[t.kind] || EX.typePinyin)(host, it, res => finish(t, res), c); }
+  try { (EX[t.kind] || EX.typePinyin)(host, it, res => finish(t, res), c); if (NO_LISTEN[t.kind]) noListenLink(host); }
   catch (e) { console.warn('exercise fallback', t.kind, e); t.kind = 'typePinyin'; EX.typePinyin(host, it, res => finish(t, res), c); }
   function skip() { s.i++; renderTask(); }
 }
@@ -1594,7 +1602,7 @@ function finish(t, res) {
   fb.innerHTML = `<div class="fbh">${ic(res.ok ? 'check' : 'close')}<b>${res.ok ? (s.combo >= 3 ? `对了！连对 ${s.combo}` : '对了！') : '不对'}</b></div>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}${memo}
     ${FSRS_MODES.has(s.mode) && c ? `<div class="grades">${[1, 2, 3, 4].map(g => `<button class="btn${g === sug ? ' sug' : ''}" data-g="${g}">${['Again', 'Hard', 'Good', 'Easy'][g - 1]}<small>${nextLabel(c, g)}</small></button>`).join('')}</div>` : `<button class="btn pri block" data-g="${sug}">继续 Next</button>`}`;
   host.appendChild(fb);
-  if (!t.ex && it.s && !res.noAudio) say(it.s);
+  if (!t.ex && it.s && !res.noAudio && !s.noListen) say(it.s);
   $$('[data-g]', fb).forEach(b => b.onclick = () => grade(t, +b.dataset.g, res));
 }
 function nextLabel(c, g) {
@@ -1853,14 +1861,15 @@ EX.speakSentence = (host, it, cb) => {
 const sentPool = sx => { const all = [...D.sent.values()].filter(x => x.en !== sx.en); const near = all.filter(x => x.unit === sx.unit); return near.length >= 3 ? near : all; };
 function EXS(host, sx, cb, c, force) {
   const st = c && c.st === 2 ? c.s : 0, r = Math.random(), rate = Math.max(0.85, S().rate);
-  const kind = force || (!c || c.reps <= 1) ? force || 'hear' : r < 0.32 ? 'hear' : r < 0.7 ? 'say' : st > 6 && r < 0.84 ? 'dict' : 'build';
+  let kind = force || (!c || c.reps <= 1) ? force || 'hear' : r < 0.32 ? 'hear' : r < 0.7 ? 'say' : st > 6 && r < 0.84 ? 'dict' : 'build';
+  if (SES && SES.noListen && (kind === 'hear' || kind === 'dict')) kind = 'build';
   const reveal = `<div class="hz tc" style="font-size:20px;margin:6px 0">${rubyHTML(sx.zh, sx.p)} <button class="lplay" data-act="say" data-t="${esc(sx.zh)}" aria-label="Play">${ic('play')}</button></div><div class="small muted">${esc(sx.en)}</div>`;
   const done = res => cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + reveal });
   if (kind === 'hear') {
     const opts = shuffle([sx, ...sample(sentPool(sx), 3)]);
     host.innerHTML = `<p class="muted center">句子 · What does it mean?</p>${audioBtns(sx.zh, rate)}${mcHTML(opts, o => esc(o.en))}`;
     setTimeout(() => say(sx.zh, rate), 200);
-    return bindMC(host, opts, opts.indexOf(sx), done);
+    bindMC(host, opts, opts.indexOf(sx), done); return noListenLink(host);
   }
   if (kind === 'say') {
     let peek = false;
@@ -1876,7 +1885,7 @@ function EXS(host, sx, cb, c, force) {
     setTimeout(() => say(sx.zh, rate), 200);
     const go = () => { const v = $('[data-r=in]', host).value; if (!v.trim()) return; const sim = Core.charSim(v, sx.zh); done({ ok: sim >= 0.85, grade: sim === 1 ? 3 : sim >= 0.85 ? 2 : 1, why: `<span class="hz" style="font-size:20px">${Core.charDiff(v, sx.zh).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span>` }); };
     $('[data-r=go]', host).onclick = go; $('[data-r=in]', host).onkeydown = e => e.key === 'Enter' && go();
-    return;
+    return noListenLink(host);
   }
   exDrill(host, { type: 'order', zh: sx.zh, p: sx.p, en: sx.en }, done);
 }
