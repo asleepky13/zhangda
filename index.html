@@ -1633,8 +1633,9 @@ const EX = {};
 const prompt = (it, extra = '') => `<div class="qprompt center">${esc(gloss(it))}</div>${it.pos ? `<div class="center"><span class="tag">${esc(POS[it.pos] || it.pos)}</span>${it.reg ? `<span class="tag">${esc(it.reg)}</span>` : ''}</div>` : ''}${extra}`;
 function distract(it, n, key = 'en') {
   const pool = [...D.items.values()].filter(x => x.k === it.k && x.id !== it.id && x[key] && x[key] !== it[key] && x.s !== it.s);
-  const near = pool.filter(x => x.unit === it.unit);
-  return sample(near.length >= n ? near : pool, n);
+  const uniq = list => { const seen = new Set([it[key]]); return list.filter(x => !seen.has(x[key]) && seen.add(x[key])); }; // no two options alike
+  const near = uniq(shuffle(pool.filter(x => x.unit === it.unit)));
+  return (near.length >= n ? near : uniq([...near, ...shuffle(pool)])).slice(0, n);
 }
 function mcHTML(opts, label) { return opts.map((o, i) => `<button class="opt" data-i="${i}">${label(o)}</button>`).join(''); }
 function bindMC(host, opts, correctIdx, cb, whyFn) {
@@ -1804,7 +1805,8 @@ EX.nameRad = (host, it, cb) => {
 // pinyin → character, with look-alikes and same-sound characters as distractors
 EX.pyToChar = (host, it, cb) => {
   const same = [...D.items.values()].filter(x => x.s !== it.s && x.k === it.k && x.p.replace(/\d/g, '') === it.p).map(x => x.s);
-  const near = [...D.items.values()].filter(x => x.unit === it.unit && x.s !== it.s && [...x.s].length === [...it.s].length).map(x => x.s);
+  const sameLen = x => x.s !== it.s && [...x.s].length === [...it.s].length, local = [...D.items.values()].filter(x => x.unit === it.unit && sameLen(x)).map(x => x.s);
+  const near = local.length >= 3 ? local : local.concat(sample([...D.items.values()].filter(sameLen).map(x => x.s), 6));
   const opts = shuffle([it.s, ...sample([...new Set([...lookalikes(it), ...same])].filter(x => x !== it.s && [...x].length === [...it.s].length), 2), ...sample(near, 3)].filter((x, i, a) => a.indexOf(x) === i).slice(0, 4));
   host.innerHTML = `<p class="muted center">Which character is <b class="tc">${pyHTML(it.s, it.p)}</b>?</p><p class="center small muted">${esc(it.en)}</p><div class="grid2">${opts.map((o, i) => `<button class="opt center hz" style="font-size:30px" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
   bindMC(host, opts, opts.indexOf(it.s), cb);
@@ -1842,7 +1844,9 @@ EX.cloze = (host, it, cb) => { // the word in a real sentence
 };
 EX.listenSentence = (host, it, cb) => { // hear a whole sentence at natural speed, catch its meaning
   const e = pick(it.ex || []); if (!e) return EX.listenType(host, it, cb);
-  const pool = [...D.items.values()].filter(x => x.unit === it.unit && x.id !== it.id).flatMap(x => x.ex || []).filter(x => x.en !== e.en);
+  const all = [...D.items.values()].flatMap(x => x.ex || []), seen = new Set([e.en]), uniq = l => l.filter(x => !seen.has(x.en) && seen.add(x.en));
+  const near = uniq(shuffle([...D.items.values()].filter(x => x.unit === it.unit && x.id !== it.id).flatMap(x => x.ex || [])));
+  const pool = near.length >= 3 ? near : near.concat(uniq(sample(all, 60)));
   const opts = shuffle([e, ...sample(pool, 3)]), r = Math.max(0.85, listenRate(it));
   host.innerHTML = `<p class="muted center">Listen. What does the sentence mean?</p>${audioBtns(e.zh, r)}${mcHTML(opts, o => esc(o.en))}`;
   setTimeout(() => say(e.zh, r), 200);
@@ -1890,19 +1894,19 @@ function EXS(host, sx, cb, c, force) {
   exDrill(host, { type: 'order', zh: sx.zh, p: sx.p, en: sx.en }, done);
 }
 // conversation turn: hear a question, answer it (voice first, choices if you can't)
-function exTurn(host, n, cb) {
+function exTurn(host, n, cb, pool = []) {
   const good = n.opts.filter(o => (o.score ?? 2) >= Math.max(...n.opts.map(x => x.score ?? 2)));
   host.innerHTML = `<p class="muted center">对话 · Listen and answer</p>${audioBtns(n.npc, Math.max(0.9, S().rate))}<button class="linkbtn" data-r="txt">Show the question</button><div data-r="q"></div><div data-r="sp"></div><button class="linkbtn" data-r="mc">Choose an answer instead</button><div data-r="opts"></div>`;
   setTimeout(() => say(n.npc), 200);
-  const model = `Q: <span class="hz">${esc(n.npc)}</span> · ${esc(n.en)}<br>A: ${good.map(o => `<span class="hz">${esc(o.zh)}</span> (${esc(o.en)})`).join(' / ')}`;
-  $('[data-r=txt]', host).onclick = e => { e.target.remove(); $('[data-r=q]', host).innerHTML = `<div class="card center hz" style="font-size:19px">${rubyHTML(n.npc, n.p)}</div>`; };
+  const model = `Q: <span class="hz">${esc(n.npc)}</span>${n.en ? ' · ' + esc(n.en) : ''}<br>A: ${good.map(o => `<span class="hz">${esc(o.zh)}</span> (${esc(o.en)})`).join(' / ')}`;
+  $('[data-r=txt]', host).onclick = e => { e.target.remove(); $('[data-r=q]', host).innerHTML = `<div class="card center hz" style="font-size:19px">${n.p ? rubyHTML(n.npc, n.p) : esc(n.npc)}</div>`; };
   speakPanel($('[data-r=sp]', host), { zh: good[0].zh, p: good[0].p }, r => {
     if (r.self) return cb({ ok: r.ok, self: true, noAudio: true, why: model });
     const sim = Math.max(...good.map(o => Core.charSim(r.heard || '', o.zh)));
     cb({ ok: sim >= 0.6, grade: sim >= 0.85 ? 3 : sim >= 0.6 ? 2 : 1, noAudio: true, why: `You said: <span class="hz">${esc(r.heard || '—')}</span><br>${model}` });
   });
   $('[data-r=mc]', host).onclick = e => { e.target.remove();
-    const right = good[0], others = sample([...D.scen.values()].flatMap(sc => Object.values(sc.nodes)).flatMap(x => x.opts || []).filter(o => !n.opts.includes(o) && o.zh !== right.zh), 3), opts = shuffle([right, ...others]);
+    const right = good[0], others = sample(pool.flatMap(x => x.opts || []).filter(o => !n.opts.includes(o) && o.zh !== right.zh), 3), opts = shuffle([right, ...others]);
     $('[data-r=opts]', host).innerHTML = mcHTML(opts, o => `<span class="hz">${esc(o.zh)}</span>`);
     bindMC($('[data-r=opts]', host), opts, opts.indexOf(right), res => cb({ ...res, grade: res.ok ? 2 : 1, noAudio: true, why: model }));
   };
@@ -2136,7 +2140,7 @@ function bankTasks(us, n) {
   const f = n / 25, cnt = k => Math.max(1, Math.round(k * f)), tasks = [];
   const take = () => sents.pop();
   for (let k = 0; k < cnt(6); k++) { const it = pickItem(k); if (it) tasks.push({ item: it.id, card: null, kind: 'handwrite', tmpCard: tmp(it, 'writing') }); }
-  for (let k = 0; k < cnt(2); k++) { const it = pickItem(k, x => (D.chars.get(x.s) || {}).c && D.chars.get(x.s).c.length >= 2) || pickItem(k); if (it) tasks.push({ item: it.id, card: null, kind: (D.chars.get(it.s) || {}).c ? 'assemble' : 'pickChar', tmpCard: tmp(it, 'writing') }); }
+  for (let k = 0; k < cnt(2); k++) { const it = pickItem(k, x => (D.chars.get(x.s) || {}).c && D.chars.get(x.s).c.length >= 2) || pickItem(k); if (it) tasks.push({ item: it.id, card: null, kind: (D.chars.get(it.s) || {}).c ? 'assemble' : 'pyToChar', tmpCard: tmp(it, 'writing') }); }
   for (let k = 0; k < cnt(4); k++) { const sx = take(); if (!sx) break; tasks.push(custom((host, cb) => {
     const t = (sx.tg || []).find(x => sx.zh.includes(x)) || us.flatMap(u => u.items).map(x => x.s).filter(w => sx.zh.includes(w)).sort((a, b) => b.length - a.length)[0] || [...sx.zh].find(Core.isHan);
     const it = itemByChar(t) || { s: t, look: [] };
@@ -2199,10 +2203,21 @@ function startSentences() { // due sentences first; nothing due → practise lea
   if (due.length) return startSession(shuffle(due).slice(0, 20).map(c => cardTask(c, 'review')), 'review');
   startSession(sample(cs.filter(c => c.st > 0), 15).map(c => ({ ...cardTask(c, 'cram'), card: null, tmpCard: { ...c, reps: 3 } })), 'cram');
 }
-function startConvo() { // ten questions from the role-plays you've reached, heard not read
-  const nodes = [...D.scen.values()].filter(sc => unitUnlocked(D.unitById.get(sc.unit))).flatMap(sc => Object.values(sc.nodes)).filter(n => n.npc && (n.opts || []).length && /[？?吗呢]/.test(n.npc));
-  if (!nodes.length) return toast('Reach a unit with a role-play first');
-  startSession(sample(nodes, 10).map(n => ({ kind: 'custom', run: (host, cb) => exTurn(host, n, cb) })), 'convo', { onDone: (pct, s) => doneScreen({ seal: '对答如流', title: '对话练习', sub: 'Questions heard and answered. Speaking from memory scores highest.', stats: sesStats(s), cta: '再来 Again', href: '#today' }) });
+function convoNodes() { // questions you can answer out loud: dialogue lines (A asks, B answers) and the plans' reply / dialogue questions
+  const out = [];
+  for (const u of D.units.filter(unitUnlocked)) {
+    for (const t of (u.texts || []).filter(t => t.kind === 'dialogue')) for (let i = 0; i + 1 < t.lines.length; i++) { const a = t.lines[i], b = t.lines[i + 1]; if (/[？?吗呢]/.test(a.zh)) out.push({ npc: a.zh, p: a.p, en: a.en, opts: [{ zh: b.zh, p: b.p, en: b.en }] }); }
+    for (const x of u.exercises || []) {
+      if (x.type === 'dialogue') out.push({ npc: x.q, en: '', opts: [{ zh: x.o[x.a], en: '' }] });
+      if (x.type === 'reply') { const o = x.a.filter(a => !a.includes('…')); if (o.length) out.push({ npc: x.q, en: '', opts: o.map(zh => ({ zh, en: '' })) }); }
+    }
+  }
+  return out;
+}
+function startConvo() { // ten questions from units you've reached, heard not read
+  const nodes = convoNodes();
+  if (!nodes.length) return toast('Finish a unit with a dialogue first');
+  startSession(sample(nodes, 10).map(n => ({ kind: 'custom', run: (host, cb) => exTurn(host, n, cb, nodes) })), 'convo', { onDone: (pct, s) => doneScreen({ seal: '对答如流', title: '对话练习', sub: 'Questions heard and answered. Speaking from memory scores highest.', stats: sesStats(s), cta: '再来 Again', href: '#today' }) });
 }
 function startLab(textId) { // a text line by line, audio only: catch the meaning, then see it
   const texts = [...D.texts.values()].filter(t => t.lines.length >= 3 && unitUnlocked(D.unitById.get(t.unit)));
@@ -2592,7 +2607,7 @@ function startRadQuiz() { // seen radicals first, then the rest
   startSession(shuffle(tasks), 'rad', { onDone: (pct, s) => { save(); doneScreen({ seal: '一目了然', title: '部首练习', sub: 'Spot the part, guess the meaning: that works on characters you have never seen.', stats: sesStats(s), cta: '部首 Back to radicals', href: '#radicals' }); } });
 }
 V.more = () => {
-  const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#radicals', 'note', '部首', 'Radicals: sides, tops, bottoms'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#scens', 'chat', '情景', 'Role-play scenarios'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
+  const rows = [['#dash', 'chart', '学习情况', 'Dashboard'], ['#radicals', 'note', '部首', 'Radicals: sides, tops, bottoms'], ['#mistakes', 'alert', '错题本', 'Mistakes notebook'], ['#chart', 'tones', '拼音表', 'Pinyin and tone chart'], ['#settings', 'gear', '设置', 'Settings, export and import'], ['#help', 'info', '帮助', 'Sound, microphone and browser support']];
   view.innerHTML = `${ph('更多', 'More')}<div class="list">${rows.map(([h, i, z, e]) => `<a href="${h}">${ic(i)}<span class="grow"><b class="hz">${z}</b> <span class="small muted">${e}</span></span>${ic('chev')}</a>`).join('')}</div>`;
 };
 V.scens = () => { view.innerHTML = `${ph('情景', 'Scenarios')}<div class="list">${[...D.scen.values()].filter(s => unitUnlocked(D.unitById.get(s.unit))).map(s => `<a href="#scen/${s.id}"><span class="grow hz">${esc(s.title)}</span><span class="small muted">${META.progress.scen[s.id] != null ? META.progress.scen[s.id] + '%' : ''}</span>›</a>`).join('')}</div>`; };

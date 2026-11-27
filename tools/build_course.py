@@ -38,8 +38,9 @@ def clean_meanings(ms):
     for m in ms:
         if re.match(r'(surname |variant of|old variant|archaic|abbr\. for|see |used in |CL:|Taiwan pr|also pr|erhua variant|\(old\)|\(dialect\))', m, re.I): continue
         m = re.sub(r'\(bound form\)\s*', '', m); m = re.sub(r'\[[^\]]*\]', '', m); m = re.sub(r'\|[^\s,;)]*', '', m)
+        m = re.sub(r'sb', 'someone', re.sub(r'sth', 'something', m)); m = re.sub(r'\s*\((?:[^)]*etc[^)]*|[^)]{24,})\)', '', m)
         m = re.sub(r'\s+', ' ', m).strip(' ;,')
-        if m and len(m) <= 48 and m not in out: out.append(m)
+        if m and len(m) <= 40 and m not in out: out.append(m)
     return out
 
 # ---------------- dictionary (2025 HSK 3.0 lists) ----------------
@@ -49,14 +50,18 @@ for w in raw:
     lv = sorted(int(l.split('-')[1]) for l in w.get('level', []) if l.startswith('newest-'))
     s = w['simplified']; han = HAN.findall(s)
     if len(han) != len(s): continue
-    f = w['forms'][0]; py0 = syls(f['transcriptions']['pinyin'])
+    def _score(f):  # the main reading: not a surname/proper form, the known reading of function characters, richer entries
+        py = f['transcriptions']['pinyin']; ms = clean_meanings(f['meanings'])
+        return (len(s) == 1 and FUNC.get(s) == py.lower().strip()) * 8 + (not py[:1].isupper()) * 5 + (bool(ms)) * 10 + min(len(ms), 3)
+    f = max(w['forms'], key=_score); py0 = syls(f['transcriptions']['pinyin'])
     if len(py0) != len(han): continue
     py = syls(' '.join(cite(c, p) for c, p in zip(han, py0)), han)
     ms = clean_meanings(f['meanings']) or [re.sub(r'\[[^\]]*\]', '', f['meanings'][0]).strip()]
-    en = '; '.join(ms[:3]); en = en if len(en) <= 80 else ms[0][:80]
+    en = '; '.join(ms[:2]); en = en if len(en) <= 48 else ms[0][:48]  # the two main senses: clean multiple-choice options
     cls = [c for c in (f.get('classifiers') or []) if HAN.fullmatch(c)]
     WORDS[s] = {'s': s, 'py': py, 'en': en, 'pos': next((POS[p] for p in w.get('pos', []) if p in POS), None), 'mw': cls[0] if cls else None,
                 'lv': lv[0] if lv else None, 'freq': w.get('frequency') or 10**6}
+WORDS['给']['en'] = 'to give; for (someone)'  # CEDICT leads with the prepositions
 WPY = {k: v['py'] for k, v in WORDS.items()}; WPY.update(PY_OVERRIDE)
 CPY = dict(FUNC)
 for w in sorted(WORDS.values(), key=lambda w: (len(w['s']), w['freq'])):
@@ -303,7 +308,7 @@ def unit_written2(uid, N, lv, stage, title, review):
     again = [r for r in W['words'] if r[1] in taken]  # the plan reuses earlier words on purpose: listed, not re-taught
     for r in words:
         zh = r[1]; w = WORDS.get(zh)
-        py = pinyin(zh) or (' '.join(w['py']) if w else r[2])
+        py = r[2].lower().strip() if len(zh) == 1 else pinyin(zh) or (' '.join(w['py']) if w else r[2])  # the plan's reading for single characters (还 huán)
         it = {'id': f'k{lv}.{zh}', 'k': 'char' if len(zh) == 1 else 'word', 's': zh, 'p': py, 'en': r[3]}
         if w and w['pos']: it['pos'] = w['pos']
         if w and w['mw']: it['mw'] = w['mw']
@@ -320,10 +325,11 @@ def unit_written2(uid, N, lv, stage, title, review):
     for r in W['qs']:
         qid, T, prompt, ans = r[0], r[1], r[2], r[3]
         if T == 'fill':
+            ans_alts = alts(ans); ans = ans_alts[0]
             hint = (re.search(r'\(([^)]*)\)\s*$', prompt) or [None, ''])[1]
             q = re.sub(r'\s*\([^)]*\)\s*$', '', prompt).replace('（ ）', '＿＿').replace('（）', '＿＿')
             pool = [f[3] for f in fills if f[3] != ans and len(f[3]) == len(ans)] + [wd for wd in unit_words if len(wd) == len(ans)]
-            pool = [x for x in dict.fromkeys(pool) if x != ans and x not in q]
+            pool = [x for x in dict.fromkeys(pool) if x not in ans_alts and x not in q and '‖' not in x]
             o = random.sample(pool, min(3, len(pool))) + [ans]; random.shuffle(o)
             exs.append({'id': qid, 'type': 'fill', 'q': q, 'o': o, 'a': o.index(ans), **({'en': hint} if hint else {})})
         elif T == 'order':
