@@ -276,16 +276,16 @@ def theme_re(theme):
 stages, pk_known = [], set(p1_known)
 taken = set()
 
-# HSK 2 written out (course/hsk2.md): units 16-25 with words, grammar, dialogue, activities and a 50-question bank each
+# HSK 2-3 written out (course/hsk2.md → units 16-25, hsk3.md → 26-45): words, grammar, dialogue, activities, question bank
 W2 = {}
-_h2 = open(os.path.join(PLAN, 'hsk2.md'), encoding='utf-8').read()
 def _rows(t):
     out = [[c.strip() for c in r.strip().strip('|').split('|')] for r in t.split('\n') if r.strip().startswith('|') and not re.fullmatch(r'[\s|:-]+', r.strip())]
     return out[1:]
-for h, b in sections(_h2, r'^## H2-U(\d+): .*$'):
-    k = int(re.match(r'## H2-U(\d+)', h).group(1)); part = sections(b, r'^### .*$')
+for fname, tag, off in (('hsk2.md', 'H2', 15), ('hsk3.md', 'H3', 25)):
+  for h, b in sections(open(os.path.join(PLAN, fname), encoding='utf-8').read(), rf'^## {tag}-U(\d+): .*$'):
+    k = int(re.match(rf'## {tag}-U(\d+)', h).group(1)); part = sections(b, r'^### .*$')
     get = lambda name: next((v for kk, v in part if kk.startswith('### ' + name)), '')
-    W2[15 + k] = {'title': h.split(': ', 1)[1].strip(), 'goal': (re.search(r'Goal: (.*)', b) or [None, ''])[1].strip(), 'words': _rows(get('Words')), 'grammar': md_html(get('Grammar').strip()),
+    W2[off + k] = {'title': h.split(': ', 1)[1].strip(), 'goal': (re.search(r'Goal: (.*)', b) or [None, ''])[1].strip(), 'words': _rows(get('Words')), 'grammar': md_html(get('Grammar').strip()),
                   'dialogue': re.findall(r'^([AB]): (.+?) \*(.+?)\*\s*$', get('Dialogue'), re.M), 'acts': md_html(get('Practice activities').strip()), 'qs': _rows(get('Question bank'))}
 reserved = {r[1] for w in W2.values() for r in w['words']}
 alts = lambda t: [x.strip() for x in t.split('‖') if x.strip()]
@@ -300,6 +300,7 @@ def unit_written2(uid, N, lv, stage, title, review):
         o = sent_obj(zh, en)
         if o: sents.append(o)
     words = [r for r in W['words'] if r[1] not in taken]
+    again = [r for r in W['words'] if r[1] in taken]  # the plan reuses earlier words on purpose: listed, not re-taught
     for r in words:
         zh = r[1]; w = WORDS.get(zh)
         py = pinyin(zh) or (' '.join(w['py']) if w else r[2])
@@ -334,7 +335,7 @@ def unit_written2(uid, N, lv, stage, title, review):
         elif T == 'fix': exs.append({'id': qid, 'type': 'error', 'q': prompt, 'ans': alts(ans)[0], 'alts': alts(ans)})
         elif T == 'speak': exs.append({'id': qid, 'type': 'speak', 'en': prompt, 'a': alts(ans)})
         elif T == 'reply': exs.append({'id': qid, 'type': 'reply', 'q': prompt, 'a': alts(ans)})
-    lessons = [{'id': f'l.{uid}.0', 'title': '语法 · Grammar', 'type': 'info', 'html': f'<p class="muted center">语法 · Grammar</p><h2 class="display" style="text-align:center">{W["title"]}</h2><p class="muted">{W["goal"]}</p>' + W['grammar'] + '<h3>Practice activities</h3>' + W['acts']}]
+    lessons = [{'id': f'l.{uid}.0', 'title': '语法 · Grammar', 'type': 'info', 'html': f'<p class="muted center">语法 · Grammar</p><h2 class="display" style="text-align:center">{W["title"]}</h2><p class="muted">{W["goal"]}</p>' + W['grammar'] + (f'<h3>Words from earlier units</h3><div class="tblw"><table>' + ''.join(f'<tr><td class="hz">{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>' for r in again) + '</table></div>' if again else '') + '<h3>Practice activities</h3>' + W['acts']}]
     nl = math.ceil(len(items) / 7)
     for li in range(nl):
         grp = items[li * len(items) // nl:(li + 1) * len(items) // nl]
@@ -373,7 +374,7 @@ for lv, stage, title, nunits in LEVELS:
                 if w and w['mw']: it['mw'] = w['mw']
                 taken.add(it['s'])
             pk_known |= {c for it in u['items'] for c in it['s']}
-        elif N in W2:  # HSK 2 units 16-25: the written plan
+        elif N in W2:  # HSK 2-3 units 16-45: the written plans
             u = unit_written2(uid, N, lv, stage, title, review)
             pk_known |= {c for it in u['items'] for c in it['s']}
         else:

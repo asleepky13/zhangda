@@ -2,7 +2,7 @@
 //  shell + course data: versioned, network-first so new units appear; replaced on each release.
 //  audio (data/voice/*.mp3, native recordings) and CDN libraries/fonts/stroke data: content never changes for a URL,
 //  so cache-first in caches that survive releases. Audio is capped (oldest dropped first) so the phone never fills up.
-const V = 'zhangda-v32';
+const V = 'zhangda-v33';
 const AUDIO = 'zhangda-audio', CDN = 'zhangda-cdn', AUDIO_MAX = 2500; // ~25 MB of clips
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'data/index.json', 'data/syllables.json', 'data/radicals.json'];
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
