@@ -1592,7 +1592,7 @@ function renderTask() {
   view.innerHTML = `<div class="prog"><div class="row"><button class="btn sm ic" data-act="quit" aria-label="end session">${ic('close')}</button><div class="grow bar"><i style="width:${Math.round(s.i / total * 100)}%"></i></div>${s.combo >= 3 ? `<span class="combo" aria-label="${s.combo} right in a row">连对 ${s.combo}</span>` : `<span class="small muted">${s.i + 1}/${total}</span>`}</div></div><div id="ex"></div>`;
   const host = $('#ex');
   if (t.kind === 'intro') return exIntro(host, D.items.get(t.item));
-  if (t.kind === 'info') { host.innerHTML = t.html + `<button class="btn pri block" data-r="next">明白了 Got it</button>`; $('[data-r=next]', host).onclick = () => { SES.i++; renderTask(); }; return; }
+  if (t.kind === 'info') { host.innerHTML = t.html + `<button class="btn pri block" data-r="next">明白了 Got it</button>`; sentencePlay(host); $('[data-r=next]', host).onclick = () => { SES.i++; renderTask(); }; return; }
   if (t.kind === 'custom') return t.run(host, res => finish(t, res));
   if (t.kind === 'recall') {
     const wrong = new Set(s.wrong), pool = t.pool.map(id => D.items.get(id)).filter(Boolean);
@@ -1876,11 +1876,23 @@ const sentReveal = e => `<div class="hz tc" style="font-size:20px;margin:6px 0">
 function sentencePlay(host) { // after answering: a play button beside any sentence (question card, model answer, correction) that has none
   const has = new Set($$('[data-act=say]', host).map(b => b.dataset.t));
   for (const el of $$('.hz, .cloze', host)) {
-    if (el.closest('button, .tiles, .opt, .nosay') || el.querySelector('button, .gap') || (el.parentElement && el.parentElement.closest('.hz, .cloze'))) continue;
+    if (el.closest('button, .tiles, .opt, .nosay, input') || /＿/.test(el.textContent) || el.querySelector('button, .gap') || (el.parentElement && el.parentElement.closest('.hz, .cloze'))) continue;
     const c = el.cloneNode(true); c.querySelectorAll('rt, rp').forEach(x => x.remove()); c.querySelectorAll('br').forEach(x => x.replaceWith(' / '));
     const zh = c.textContent.split(' / ')[0].replace(/[…＿　\s]/g, '').replace(/[A-Za-z].*$/, '');
     if ([...zh].filter(Core.isHan).length < 4 || has.has(zh)) continue;
     has.add(zh); el.insertAdjacentHTML('beforeend', ` <button class="lplay" data-act="say" data-t="${esc(zh)}" aria-label="Play the sentence">${ic('play')}</button>`);
+  }
+  // Chinese sentences sitting inside English text (grammar notes, activities): button right after each one
+  const skip = 'button, .tiles, .opt, .nosay, input, textarea, ruby, .lplay, .spot, [data-act=say], script, style';
+  const tw = document.createTreeWalker(host, NodeFilter.SHOW_TEXT), nodes = [];
+  while (tw.nextNode()) { const n = tw.currentNode, pe = n.parentElement; if (pe && !pe.closest(skip) && !(pe.closest('.hz, .cloze, p, li, div') || pe).querySelector('.gap') && /[㐀-鿿]{2}/.test(n.data)) nodes.push(n); }
+  for (const n of nodes) {
+    const re = /[㐀-鿿][㐀-鿿，、：；“”‘’《》0-9]*[。？！?!]?/g, parts = []; let m, last = 0;
+    while ((m = re.exec(n.data))) { const zh = m[0]; if ([...zh].filter(Core.isHan).length < 4 || /＿/.test(zh) || has.has(zh)) continue; has.add(zh); parts.push([m.index + zh.length, zh]); }
+    if (!parts.length) continue;
+    const frag = document.createDocumentFragment();
+    for (const [end, zh] of parts) { frag.append(n.data.slice(last, end)); const b = document.createElement('button'); b.className = 'lplay'; b.dataset.act = 'say'; b.dataset.t = zh; b.setAttribute('aria-label', 'Play the sentence'); b.innerHTML = ic('play'); frag.append(b); last = end; }
+    frag.append(n.data.slice(last)); n.replaceWith(frag);
   }
 }
 const playSentence = zh => { if (!(SES && SES.noListen)) setTimeout(() => say(zh), 150); }; // after a fill-the-gap answer, hear it whole
@@ -2950,7 +2962,7 @@ function route() {
     const st = D.stages.find(x => (x.unitsMeta || []).some(m => m.id === r.unit));
     return Promise.resolve(st && ensurePack(st.n)).then(() => { const l = D.lessons.get(r.lid); if (l && !SES) startLesson(l); else if (!SES) go('#today'); }, () => go('#today')); }
   if (SES && name !== 'session') SES = null;
-  (V[name] || V.today)(a, b);
+  Promise.resolve((V[name] || V.today)(a, b)).then(() => sentencePlay(view));
   renderStreak(); window.scrollTo(0, 0);
   if (name !== 'session' && 'IntersectionObserver' in window) { // reveal-on-scroll
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.08 });
