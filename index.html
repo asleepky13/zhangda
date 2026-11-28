@@ -1621,7 +1621,7 @@ function finish(t, res) {
   fb.className = 'fb sheetfb ' + (res.ok ? 'ok' : 'no');
   fb.setAttribute('role', 'status');
   fb.innerHTML = `<div class="fbh">${ic(res.ok ? 'check' : 'close')}<b>${res.ok ? (s.combo >= 3 ? `对了！连对 ${s.combo}` : '对了！') : '不对'}</b></div>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}${memo}
-    ${FSRS_MODES.has(s.mode) && c ? `<div class="grades">${[1, 2, 3, 4].map(g => `<button class="btn${g === sug ? ' sug' : ''}" data-g="${g}">${['Again', 'Hard', 'Good', 'Easy'][g - 1]}<small>${nextLabel(c, g)}</small></button>`).join('')}</div>` : `<button class="btn pri block" data-g="${sug}">继续 Next</button>`}`;
+    <button class="btn pri block sug" data-g="${sug}">继续 Next</button>`;
   host.appendChild(fb);
   if (!t.ex && it.s && !res.noAudio && !s.noListen) say(it.s);
   $$('[data-g]', fb).forEach(b => b.onclick = () => grade(t, +b.dataset.g, res));
