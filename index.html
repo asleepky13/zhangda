@@ -416,6 +416,8 @@ header .back .ico{width:22px;height:22px;transform:rotate(180deg);stroke-width:2
 .spot .sc.ok{border-color:var(--good);color:var(--good)}.spot .sc.no{border-color:var(--bad);color:var(--bad)}
 .tblw{overflow-x:auto;margin:10px 0}.tblw table{border-collapse:collapse;font-size:14px;min-width:100%}.tblw th,.tblw td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.tblw th{font:700 12px var(--ui);color:var(--muted)}
 
+.ask b{display:block;font:800 20px var(--song);margin-bottom:6px}.ask p{margin:0 0 16px;color:var(--ink2,var(--muted));line-height:1.55}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
 /* library */
 .notes{display:grid;gap:0;margin:4px 0 12px;border-top:1px solid var(--line)}
 .note{display:block;padding:16px 2px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
@@ -2746,7 +2748,7 @@ V.settings = () => {
     try {
       const j = JSON.parse(await f.text());
       if (!Array.isArray(j.cards) || !j.meta || !j.meta.settings) throw new Error('not a 长大 export');
-      if (!confirm(`Replace current progress with ${j.cards.length} cards from ${j.exported || 'file'}?`)) return;
+      if (!await ask('Replace your progress?', `Import ${j.cards.length} cards from ${esc(j.exported || 'the file')}. What's on this device now is replaced.`, '导入 Import', true)) return;
       await DB.replaceAll(j.cards, j.meta); CARDS = new Map(j.cards.map(c => [c.id, c])); META = Object.assign(defaultMeta(), j.meta); toast('Imported'); go('#today');
     } catch (err) { toast('Import failed: ' + err.message); }
   };
@@ -2788,7 +2790,7 @@ V.help = () => {
 // ---------------- global actions ----------------
 const ACT = {
   say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
-  quit: () => { if (!confirm('Leave this session? Answers so far are saved; the lesson stays unfinished.')) return; const back = (SES && SES.back) || '#today'; SES = null; go(back); }, // quitting never counts as finishing
+  quit: async () => { if (!await ask('Leave this lesson?', 'Answers so far are saved. The lesson stays unfinished, so you can come back to it.', '离开 Leave')) return; const back = (SES && SES.back) || '#today'; SES = null; go(back); }, // quitting never counts as finishing
   reviews: () => startReviews(), weak: () => startWeak(),
   radsheet: el => radSheet(+el.dataset.ri),
   radquiz: () => D.rad ? startRadQuiz() : toast('Radicals not loaded'),
@@ -2819,13 +2821,22 @@ const ACT = {
   tdone: el => { const l = D.lessons.get(el.dataset.l); META.progress.lessons['read:' + el.dataset.id] = Date.now(); markLesson(l); go('#unit/' + l.unit); },
   rescen: el => V.scen(el.dataset.id),
   export: () => { const blob = new Blob([JSON.stringify({ app: 'zhangda', version: 1, exported: new Date().toISOString(), cards: [...CARDS.values()], meta: META })], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `zhangda-progress-${dayKey()}.json`; a.click(); },
-  reset: async () => { if (!confirm('Delete ALL progress on this device? This cannot be undone. Export first if unsure.')) return; CARDS = new Map(); META = defaultMeta(); await DB.replaceAll([], META); go('#today'); }
+  reset: async () => { if (!await ask('Delete all progress?', 'Every card, lesson and streak on this device is erased. This cannot be undone: export first if unsure.', '删除 Delete', true)) return; CARDS = new Map(); META = defaultMeta(); await DB.replaceAll([], META); go('#today'); }
 };
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (el && el.dataset.act && ACT[el.dataset.act]) { e.preventDefault(); ACT[el.dataset.act](el); }
   if (e.target.classList.contains('scrim')) closeSheet();
 });
+// in-app confirm (the browser's own box says "localhost says…" and looks foreign)
+function ask(title, body, ok = '确定 OK', danger = false) {
+  return new Promise(res => {
+    sheet(`<div class="ask"><b>${title}</b><p>${body}</p><div class="grid2"><button class="btn" data-r="no">取消 Cancel</button><button class="btn ${danger ? 'danger' : 'pri'}" data-r="yes">${ok}</button></div></div>`);
+    const done = v => { closeSheet(); res(v); };
+    $('.ask [data-r=no]').onclick = () => done(false); $('.ask [data-r=yes]').onclick = () => done(true);
+    const scrim = $('.scrim'); if (scrim) scrim.addEventListener('click', () => res(false), { once: true });
+  });
+}
 function sheet(html) { closeSheet(); document.body.insertAdjacentHTML('beforeend', `<div class="scrim"></div><div class="sheet">${html}</div>`); }
 function closeSheet() { $$('.sheet,.scrim').forEach(e => e.remove()); }
 function lookup(w, p) {
