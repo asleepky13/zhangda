@@ -12,7 +12,7 @@ import os, sys, glob, time
 
 BR = {1: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160], 0: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]}
 SR = {1: [22050, 24000, 16000], 0: [44100, 48000, 32000]}
-LEAD, TAIL, QUIET = 2, 4, 140  # frames kept before / after the speech; global_gain below this is near-silence
+LEAD, TAIL, QUIET = 2, 8, 140  # frames kept before / after the speech; global_gain below this is near-silence
 
 def frames(b):
     i, out = 0, []

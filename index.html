@@ -1123,14 +1123,33 @@ const Native = {
     if (D.audioWords.has(key)) return a.base + 'hsk/cmn-' + encodeURIComponent(key) + '.mp3';
     return gen();
   },
-  play(url, rate) {
+  // Chrome (Android especially) drops the last fraction of a second of short clips, worst when time-stretched (slow
+  // speeds): play a copy padded with 0.35 s of silence so only the padding is lost. Cached as WAV blobs.
+  pad: new Map(),
+  async padded(url) {
+    if (this.pad.has(url)) return this.pad.get(url);
+    const C = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!C) return url;
+    const a = await (this.ac || (this.ac = new C(1, 1, 24000))).decodeAudioData(await fetch(url).then(r => r.arrayBuffer()));
+    const d = a.getChannelData(0), sr = a.sampleRate, n = d.length + Math.round(sr * 0.35), v = new DataView(new ArrayBuffer(44 + n * 2));
+    const str = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < d.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 0x7fff, true);
+    const u = URL.createObjectURL(new Blob([v], { type: 'audio/wav' }));
+    this.pad.set(url, u);
+    if (this.pad.size > 80) { const [k, old] = this.pad.entries().next().value; URL.revokeObjectURL(old); this.pad.delete(k); }
+    return u;
+  },
+  async play(url, rate) {
+    const src = await this.padded(url).catch(() => url);
     return new Promise(res => {
       const au = this.el || (this.el = new Audio());
-      au.pause(); au.src = url; au.preservesPitch = true;
-      au.playbackRate = Math.max(0.5, Math.min(2, (rate || S().rate) / 0.9));
-      au.onended = () => res(true); au.onerror = () => res(false);
+      au.pause(); au.src = src; au.preservesPitch = true;
+      const pr0 = Math.max(0.5, Math.min(2, (rate || S().rate) / 0.9)); au.playbackRate = pr0;
+      let t = setTimeout(() => res(true), 15000);
+      au.onloadedmetadata = () => { clearTimeout(t); t = setTimeout(() => res(true), (au.duration / pr0 + 1.5) * 1000); }; // wait as long as the clip really lasts
+      au.onended = () => { clearTimeout(t); res(true); }; au.onerror = () => { clearTimeout(t); res(false); };
       const pr = au.play(); if (pr) pr.catch(() => res(false));
-      setTimeout(() => res(true), 8000);
     });
   }
 };
