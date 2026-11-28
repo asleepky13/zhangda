@@ -1534,7 +1534,21 @@ const sesStats = s => [[(s.n ? Math.round(s.ok / s.n * 100) : 0) + '%', 'accurac
 // ---------------- session engine ----------------
 let SES = null;
 const FSRS_MODES = new Set(['review', 'lesson']);
+// a course lesson in progress is kept, so reloading or leaving picks up at the same question
+const RESUME = 'zd.resume';
+const getResume = () => { try { return JSON.parse(localStorage.getItem(RESUME)); } catch { return null; } };
+const clearResume = () => { try { localStorage.removeItem(RESUME); } catch {} };
+function saveResume(s) {
+  if (!s.opts.lid) return;
+  try { localStorage.setItem(RESUME, JSON.stringify({ lid: s.opts.lid, unit: s.opts.unit, i: s.i, ok: s.ok, n: s.n, wrong: s.wrong, combo: s.combo, noListen: s.noListen, t0: s.t0, back: s.back, tasks: s.tasks.map(t => t.run ? { kind: 'custom' } : t) })); } catch {}
+}
 function startSession(tasks, mode, opts = {}) {
+  const r = opts.lid && getResume();
+  if (r && r.lid === opts.lid && r.i < r.tasks.length) { // same lesson: its saved questions, in order; question bank items (functions) are refilled from the fresh set
+    const fresh = tasks.filter(t => t.run);
+    SES = { ...r, tasks: r.tasks.map(t => t.kind === 'custom' ? fresh.shift() || {} : t), mode, opts, back: r.back || '#today' };
+    location.hash = '#session'; toast('Picked up where you left off'); return renderTask();
+  }
   // interleave: never the same item twice in a row
   for (let i = 1; i < tasks.length; i++) if (tasks[i].item && tasks[i - 1].item && tasks[i].item === tasks[i - 1].item && tasks[i].kind !== 'intro') {
     const j = tasks.findIndex((t, k) => k > i && t.item !== tasks[i].item && t.kind !== 'intro'); if (j > 0) [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
@@ -1546,6 +1560,7 @@ function startSession(tasks, mode, opts = {}) {
 function cardTask(c, mode) { const isEx = c.skill === 'drill'; return { card: c.id, item: c.item, ex: isEx ? c.item : null, kind: null, mode }; }
 function endSession() {
   const s = SES; SES = null;
+  if (s && s.opts.lid) clearResume();
   if (!s) return go('#today');
   const pct = s.n ? Math.round(s.ok / s.n * 100) : 0;
   if (s.opts.onDone) return s.opts.onDone(pct, s);
@@ -1571,6 +1586,7 @@ function renderTask() {
       else return endSession();
     } else return endSession();
   }
+  saveResume(s);
   const t = s.tasks[s.i];
   const total = s.tasks.length;
   view.innerHTML = `<div class="prog"><div class="row"><button class="btn sm ic" data-act="quit" aria-label="end session">${ic('close')}</button><div class="grow bar"><i style="width:${Math.round(s.i / total * 100)}%"></i></div>${s.combo >= 3 ? `<span class="combo" aria-label="${s.combo} right in a row">连对 ${s.combo}</span>` : `<span class="small muted">${s.i + 1}/${total}</span>`}</div></div><div id="ex"></div>`;
@@ -1623,6 +1639,7 @@ function finish(t, res) {
   fb.innerHTML = `<div class="fbh">${ic(res.ok ? 'check' : 'close')}<b>${res.ok ? (s.combo >= 3 ? `对了！连对 ${s.combo}` : '对了！') : '不对'}</b></div>${res.why ? `<div class="small" style="margin:4px 0">${res.why}</div>` : ''}${reveal}${memo}
     <button class="btn pri block sug" data-g="${sug}">继续 Next</button>`;
   host.appendChild(fb);
+  sentencePlay(host);
   if (!t.ex && it.s && !res.noAudio && !s.noListen) say(it.s);
   $$('[data-g]', fb).forEach(b => b.onclick = () => grade(t, +b.dataset.g, res));
 }
@@ -1856,6 +1873,16 @@ EX.speakSyl = EX.shadow;
 EX.toneEar = EX.toneId; // hear the word, name its tones (works for any word, not just syllables)
 const exWith = it => (it.ex || []).filter(e => e.zh.includes(it.s));
 const sentReveal = e => `<div class="hz tc" style="font-size:20px;margin:6px 0">${e.p ? rubyHTML(e.zh, e.p) : esc(e.zh)} <button class="lplay" data-act="say" data-t="${esc(e.zh)}" aria-label="Play the sentence">${ic('play')}</button></div>${e.en ? `<div class="small muted">${esc(e.en)}</div>` : ''}`;
+function sentencePlay(host) { // after answering: a play button beside any sentence (question card, model answer, correction) that has none
+  const has = new Set($$('[data-act=say]', host).map(b => b.dataset.t));
+  for (const el of $$('.hz, .cloze', host)) {
+    if (el.closest('button, .tiles, .opt, .nosay') || el.querySelector('button, .gap') || (el.parentElement && el.parentElement.closest('.hz, .cloze'))) continue;
+    const c = el.cloneNode(true); c.querySelectorAll('rt, rp').forEach(x => x.remove()); c.querySelectorAll('br').forEach(x => x.replaceWith(' / '));
+    const zh = c.textContent.split(' / ')[0].replace(/[…＿　\s]/g, '').replace(/[A-Za-z].*$/, '');
+    if ([...zh].filter(Core.isHan).length < 4 || has.has(zh)) continue;
+    has.add(zh); el.insertAdjacentHTML('beforeend', ` <button class="lplay" data-act="say" data-t="${esc(zh)}" aria-label="Play the sentence">${ic('play')}</button>`);
+  }
+}
 const playSentence = zh => { if (!(SES && SES.noListen)) setTimeout(() => say(zh), 150); }; // after a fill-the-gap answer, hear it whole
 EX.cloze = (host, it, cb) => { // the word in a real sentence
   const e = pick(exWith(it)); if (!e) return EX.typePinyin(host, it, cb);
@@ -1950,7 +1977,7 @@ function exTurn(host, n, cb, pool = []) {
   speakPanel($('[data-r=sp]', host), { zh: good[0].zh, p: good[0].p }, r => {
     if (r.self) return cb({ ok: r.ok, self: true, noAudio: true, why: model });
     const sim = Math.max(...good.map(o => Core.charSim(r.heard || '', o.zh)));
-    cb({ ok: sim >= 0.6, grade: sim >= 0.85 ? 3 : sim >= 0.6 ? 2 : 1, noAudio: true, why: `You said: <span class="hz">${esc(r.heard || '—')}</span><br>${model}` });
+    cb({ ok: sim >= 0.6, grade: sim >= 0.85 ? 3 : sim >= 0.6 ? 2 : 1, noAudio: true, why: `You said: <span class="hz nosay">${esc(r.heard || '—')}</span><br>${model}` });
   });
   $('[data-r=mc]', host).onclick = e => { e.target.remove();
     const right = good[0], others = sample(pool.flatMap(x => x.opts || []).filter(o => !n.opts.includes(o) && o.zh !== right.zh), 3), opts = shuffle([right, ...others]);
@@ -1968,8 +1995,8 @@ function exDrill(host, x, cb) {
     return bindMC(host, opts, opts.findIndex(o => o.i === x.a), r => { cb({ ...r, why: (r.ok ? '' : `Answer: <b class="hz">${esc(x.o[x.a])}</b><br>`) + (whole ? sentReveal({ zh: whole, en: x.en || '' }) : '') + why }); if (whole) playSentence(whole); });
   }
   if (T === 'error') { // find and fix the mistake: write the corrected sentence
-    host.innerHTML = `<p class="muted center">改错 · Find and fix the mistake</p><div class="card hz center" style="font-size:22px">${esc(x.q)}</div><input type="text" data-r="in" placeholder="Write the corrected sentence" autocomplete="off" value="${esc(x.q)}"><div class="row" style="margin-top:6px"><button class="btn" data-r="give">Show answer</button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
-    const judge = v => { const ok = (x.alts || [x.ans]).some(a => Core.normZh(v) === Core.normZh(a)); cb({ ok, why: `<span class="hz" style="font-size:20px">${Core.charDiff(v, x.ans).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span><br>Answer: <b class="hz">${esc(x.ans)}</b>${why ? '<br>' + why : ''}` }); say(x.ans); };
+    host.innerHTML = `<p class="muted center">改错 · Find and fix the mistake</p><div class="card hz center nosay" style="font-size:22px">${esc(x.q)}</div><input type="text" data-r="in" placeholder="Write the corrected sentence" autocomplete="off" value="${esc(x.q)}"><div class="row" style="margin-top:6px"><button class="btn" data-r="give">Show answer</button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
+    const judge = v => { const ok = (x.alts || [x.ans]).some(a => Core.normZh(v) === Core.normZh(a)); cb({ ok, why: `<span class="hz nosay" style="font-size:20px">${Core.charDiff(v, x.ans).map(d => `<span style="color:var(--${d.st === 'ok' ? 'good' : 'bad'})">${esc(d.c)}</span>`).join('')}</span><br>Answer: <b class="hz">${esc(x.ans)}</b>${why ? '<br>' + why : ''}` }); say(x.ans); };
     $('[data-r=go]', host).onclick = () => judge($('[data-r=in]', host).value); $('[data-r=give]', host).onclick = () => judge('');
     return;
   }
@@ -1998,7 +2025,7 @@ function exDrill(host, x, cb) {
     speakPanel($('[data-r=sp]', host), { zh: x.a[0].replace(/…/g, ''), p: '' }, r => {
       if (r.self || open) return self();
       const sim = Math.max(...x.a.map(a => Core.charSim(r.heard || '', a)));
-      cb({ ok: sim >= 0.7, grade: sim >= 0.9 ? 3 : sim >= 0.7 ? 2 : 1, noAudio: true, why: `You said: <span class="hz">${esc(r.heard || '—')}</span><br>${model}` });
+      cb({ ok: sim >= 0.7, grade: sim >= 0.9 ? 3 : sim >= 0.7 ? 2 : 1, noAudio: true, why: `You said: <span class="hz nosay">${esc(r.heard || '—')}</span><br>${model}` });
     });
     return;
   }
@@ -2102,10 +2129,10 @@ function nextLesson() { // the track you're in comes first; units whose checkpoi
 function markLesson(l) { META.progress.lessons[l.id] = Date.now(); save(); }
 function startLesson(l) {
   if (l.type === 'pinyin') return go(`#pinyin/${l.id}`);
-  if (l.type === 'info') return startSession([{ kind: 'info', html: l.html }], 'lesson', { onDone: () => { markLesson(l); go('#unit/' + l.unit); } });
+  if (l.type === 'info') return startSession([{ kind: 'info', html: l.html }], 'lesson', { lid: l.id, unit: l.unit, onDone: () => { markLesson(l); go('#unit/' + l.unit); } });
   if (l.type === 'review') { // review / final test across several units; 85% to pass
     const us = (l.units || []).map(id => D.unitById.get(id)).filter(Boolean);
-    return startSession(us.some(u => (u.sents || []).length) ? bankTasks(us, l.n || 40) : examTasks(us.flatMap(u => u.items), us.flatMap(u => u.exercises || []), l.n || 40), 'check', { onDone: (pct, s) => { if (pct >= 85) markLesson(l);
+    return startSession(us.some(u => (u.sents || []).length) ? bankTasks(us, l.n || 40) : examTasks(us.flatMap(u => u.items), us.flatMap(u => u.exercises || []), l.n || 40), 'check', { lid: l.id, unit: l.unit, onDone: (pct, s) => { if (pct >= 85) markLesson(l);
       doneScreen(pct >= 85 ? { seal: '温故知新', title: '通过！', sub: esc(l.title), stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit } : { seal: '再接再厉', pass: false, title: `${pct}%`, sub: 'Review needs 85%. Practise your mistakes, then try again.', stats: sesStats(s), cta: 'Back to unit', href: '#unit/' + l.unit }); } }); }
   if (l.type === 'text') return go(`#text/${l.text}/${l.id}`);
   if (l.type === 'scenario') return go(`#scen/${D.unitById.get(l.unit).scenario.id}/${l.id}`);
@@ -2161,7 +2188,7 @@ function startLesson(l) {
   for (const xid of l.ex || []) { const x = D.ex.get(xid); if (x) tasks.push(cardTask(addExCard(x), 'lesson')); }
   // 4. from memory: meaning → Chinese, missed words first (built when reached, from this session's mistakes)
   if (words0.length) tasks.push({ kind: 'recall', pool: words0.map(it => it.id) });
-  startSession(tasks, 'lesson', { onDone: (pct, s) => { markLesson(l); addSentCards(items); radNew.forEach(radMark); save(); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
+  startSession(tasks, 'lesson', { lid: l.id, unit: l.unit, onDone: (pct, s) => { markLesson(l); addSentCards(items); radNew.forEach(radMark); save(); items.forEach(it => skillsFor(it).forEach(sk => { const c = CARDS.get(it.id + '|' + sk); if (c && c.st === 0) putCard(Core.review(c, 3)); })); doneScreen({ seal: '学而时习', title: '课完成！', sub: `${esc(l.title)}. ${items.length ? `${items.length} new item${items.length > 1 ? 's' : ''} now on their own review schedule.` : ''}`, stats: sesStats(s), cta: '继续 Back to unit', href: '#unit/' + l.unit, extra: recapHTML(items.map(it => it.id), new Set(s.wrong)) }); } });
 }
 function examTasks(items, exs, n) {
   const tasks = [];
@@ -2837,7 +2864,7 @@ V.help = () => {
 // ---------------- global actions ----------------
 const ACT = {
   say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
-  quit: async () => { if (!await ask('Leave this lesson?', 'Answers so far are saved. The lesson stays unfinished, so you can come back to it.', '离开 Leave')) return; const back = (SES && SES.back) || '#today'; SES = null; go(back); }, // quitting never counts as finishing
+  quit: async () => { if (!await ask('Leave this lesson?', 'Your place is saved. Open this lesson again to carry on from this question.', '离开 Leave')) return; if (SES && SES.opts.lid) toast('Saved. Open the lesson again to continue.'); const back = (SES && SES.back) || '#today'; SES = null; go(back); }, // quitting never counts as finishing
   reviews: () => startReviews(), weak: () => startWeak(),
   radsheet: el => radSheet(+el.dataset.ri),
   radquiz: () => D.rad ? startRadQuiz() : toast('Radicals not loaded'),
@@ -2919,7 +2946,9 @@ function route() {
   $$('nav a').forEach(x => x.classList.toggle('on', x.dataset.tab === name || (name === 'unit' && x.dataset.tab === 'course') || (name === 'text' && x.dataset.tab === 'library') || (name === 'entry' && x.dataset.tab === 'dict')));
   $('#back').hidden = ['today', 'course', 'library', 'dict', 'more', 'session'].includes(name);
   document.body.classList.toggle('in-session', name === 'session'); // lessons get the full screen, like Duolingo
-  if (name === 'session') { if (SES) return; return go('#today'); }
+  if (name === 'session') { if (SES) return; const r = getResume(); if (!r) return go('#today');
+    const st = D.stages.find(x => (x.unitsMeta || []).some(m => m.id === r.unit));
+    return Promise.resolve(st && ensurePack(st.n)).then(() => { const l = D.lessons.get(r.lid); if (l && !SES) startLesson(l); else if (!SES) go('#today'); }, () => go('#today')); }
   if (SES && name !== 'session') SES = null;
   (V[name] || V.today)(a, b);
   renderStreak(); window.scrollTo(0, 0);
