@@ -1855,13 +1855,14 @@ EX.flash = (host, it, cb) => { // see the word, recall the meaning, then check y
 EX.speakSyl = EX.shadow;
 EX.toneEar = EX.toneId; // hear the word, name its tones (works for any word, not just syllables)
 const exWith = it => (it.ex || []).filter(e => e.zh.includes(it.s));
-const sentReveal = e => `<div class="hz tc" style="font-size:20px;margin:6px 0">${rubyHTML(e.zh, e.p)}</div><div class="small muted">${esc(e.en)}</div>`;
+const sentReveal = e => `<div class="hz tc" style="font-size:20px;margin:6px 0">${e.p ? rubyHTML(e.zh, e.p) : esc(e.zh)} <button class="lplay" data-act="say" data-t="${esc(e.zh)}" aria-label="Play the sentence">${ic('play')}</button></div>${e.en ? `<div class="small muted">${esc(e.en)}</div>` : ''}`;
+const playSentence = zh => { if (!(SES && SES.noListen)) setTimeout(() => say(zh), 150); }; // after a fill-the-gap answer, hear it whole
 EX.cloze = (host, it, cb) => { // the word in a real sentence
   const e = pick(exWith(it)); if (!e) return EX.typePinyin(host, it, cb);
   const L = [...it.s].length, same = distract(it, 40, 's').filter(x => [...x.s].length === L && !e.zh.includes(x.s));
   const opts = shuffle([it, ...(same.length >= 3 ? same : same.concat(distract(it, 6, 's').filter(x => !same.includes(x)))).slice(0, 3)]);
   host.innerHTML = `<p class="muted center">Fill the gap</p><div class="cloze hz">${esc(e.zh).split(esc(it.s)).join('<span class="gap">　　</span>')}</div><p class="center small muted">${esc(e.en)}</p>${mcHTML(opts, o => `<span class="hz" style="font-size:22px">${esc(o.s)}</span>`)}`;
-  bindMC(host, opts, opts.indexOf(it), r => cb({ ...r, why: (r.why ? r.why + '<br>' : '') + sentReveal(e) }), o => `「${esc(o.s)}」 means ${esc(o.en)}.`);
+  bindMC(host, opts, opts.indexOf(it), r => { cb({ ...r, noAudio: true, why: (r.why ? r.why + '<br>' : '') + sentReveal(e) }); playSentence(e.zh); }, o => `「${esc(o.s)}」 means ${esc(o.en)}.`);
 };
 EX.listenSentence = (host, it, cb) => { // hear a whole sentence at natural speed, catch its meaning
   const e = pick(it.ex || []); if (!e) return EX.listenType(host, it, cb);
@@ -1938,7 +1939,8 @@ function exDrill(host, x, cb) {
   if (T === 'fill' || T === 'syn' || T === 'fix') {
     const opts = x.o.map((o, i) => ({ o, i })); shuffle(opts);
     host.innerHTML = `<p class="muted center">${T === 'fix' ? 'Which sentence fixes the mistake?' : T === 'syn' ? 'Pick the right word' : 'Fill in the blank'}</p><div class="card hz" style="font-size:22px">${esc(x.q)}</div>${x.en ? `<p class="center muted small">${esc(x.en)}</p>` : ''}${mcHTML(opts, o => `<span class="hz" style="font-size:20px">${esc(o.o)}</span>`)}`;
-    return bindMC(host, opts, opts.findIndex(o => o.i === x.a), r => cb({ ...r, why: (r.ok ? '' : `Answer: <b class="hz">${esc(x.o[x.a])}</b><br>`) + why }));
+    const whole = T === 'fill' && x.q.includes('＿＿') ? x.q.replace('＿＿', x.o[x.a]) : null;
+    return bindMC(host, opts, opts.findIndex(o => o.i === x.a), r => { cb({ ...r, why: (r.ok ? '' : `Answer: <b class="hz">${esc(x.o[x.a])}</b><br>`) + (whole ? sentReveal({ zh: whole, en: x.en || '' }) : '') + why }); if (whole) playSentence(whole); });
   }
   if (T === 'error') { // find and fix the mistake: write the corrected sentence
     host.innerHTML = `<p class="muted center">改错 · Find and fix the mistake</p><div class="card hz center" style="font-size:22px">${esc(x.q)}</div><input type="text" data-r="in" placeholder="Write the corrected sentence" autocomplete="off" value="${esc(x.q)}"><div class="row" style="margin-top:6px"><button class="btn" data-r="give">Show answer</button><span class="grow"></span><button class="btn pri" data-r="go">Check</button></div>`;
@@ -2168,7 +2170,7 @@ function bankTasks(us, n) {
     const others = [...new Set([...(it.look || []), ...lookalikes(it), ...us.flatMap(u => u.items).map(x => x.s)])].filter(x => x !== t && [...x].length === [...t].length && !sx.zh.includes(x));
     const opts = shuffle([t, ...sample(others, 3)]);
     host.innerHTML = `<p class="muted center">填空 · Fill the blank</p><div class="cloze hz">${esc(sx.zh).replace(esc(t), '<span class="gap">　　</span>')}</div><p class="center small muted">${esc(sx.en)}</p>${mcHTML(opts, o => `<span class="hz" style="font-size:22px">${esc(o)}</span>`)}`;
-    bindMC(host, opts, opts.indexOf(t), r => cb({ ...r, noAudio: true, why: `<span class="hz">${esc(sx.zh)}</span>` }));
+    bindMC(host, opts, opts.indexOf(t), r => { cb({ ...r, noAudio: true, why: sentReveal(sx) }); playSentence(sx.zh); });
   })); }
   for (let k = 0; k < cnt(3); k++) { const sx = take(); if (!sx) break; tasks.push(custom((host, cb) => { // spot the swapped look-alike
     const cs = [...sx.zh], cand = cs.map((c, i) => [c, i, itemByChar(c)]).filter(([c, , it]) => it && (it.look || []).length);
