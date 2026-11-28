@@ -1864,15 +1864,43 @@ EX.cloze = (host, it, cb) => { // the word in a real sentence
   host.innerHTML = `<p class="muted center">Fill the gap</p><div class="cloze hz">${esc(e.zh).split(esc(it.s)).join('<span class="gap">　　</span>')}</div><p class="center small muted">${esc(e.en)}</p>${mcHTML(opts, o => `<span class="hz" style="font-size:22px">${esc(o.s)}</span>`)}`;
   bindMC(host, opts, opts.indexOf(it), r => { cb({ ...r, noAudio: true, why: (r.why ? r.why + '<br>' : '') + sentReveal(e) }); playSentence(e.zh); }, o => `「${esc(o.s)}」 means ${esc(o.en)}.`);
 };
+// sentences that could be mistaken for this one: shared characters, similar length (not random strangers)
+function sentLike(e, n = 3) {
+  const hz = t => new Set([...t].filter(Core.isHan)), H = hz(e.zh), L = [...e.zh].length;
+  const pool = [...D.sent.values()].concat([...D.items.values()].flatMap(x => x.ex || []));
+  const seen = new Set([e.en, e.zh]), out = [];
+  for (const [, x] of pool.map(x => { let o = 0; hz(x.zh).forEach(c => H.has(c) && o++); return [o * 2 - Math.abs([...x.zh].length - L) / 3 + Math.random() * 1.5, x]; }).sort((a, b) => b[0] - a[0])) {
+    if (seen.has(x.en) || seen.has(x.zh) || !x.en) continue; seen.add(x.en); seen.add(x.zh); out.push(x); if (out.length === n) break;
+  }
+  return out;
+}
+// hear a sentence, then one of four questions: what it means · which sentence you heard · true or false · which word you heard
+function sentenceQ(host, e, rate, done, kind) {
+  const r = Math.random(); kind = kind || (r < 0.4 ? 'meaning' : r < 0.65 ? 'which' : r < 0.85 ? 'tf' : 'word');
+  const head = { meaning: 'Listen. What does it mean?', which: 'Listen. Which sentence did you hear?', tf: 'Listen. Is this what it says?', word: 'Listen. Which word did you hear?' }[kind];
+  const play = audioBtns(e.zh, rate); setTimeout(() => say(e.zh, rate), 200);
+  if (kind === 'tf') {
+    const right = Math.random() < 0.5, other = sentLike(e, 1)[0], claim = right || !other ? e.en : other.en;
+    host.innerHTML = `<p class="muted center">${head}</p>${play}<div class="card center" style="font-size:19px">${esc(claim)}</div><div class="grid2"><button class="opt center" data-i="0">${ic('close')} 不对 No</button><button class="opt center" data-i="1">${ic('check')} 对 Yes</button></div>`;
+    return bindMC(host, [0, 1], claim === e.en ? 1 : 0, done);
+  }
+  if (kind === 'word') {
+    const its = [...D.items.values()].filter(x => x.k !== 'syl' && x.k !== 'rad' && e.zh.includes(x.s)).sort((a, b) => b.s.length - a.s.length), w = its[0];
+    if (w) {
+      const look = [...new Set([...lookalikes(w), ...distract(w, 6, 's').map(x => x.s)])].filter(x => x !== w.s && [...x].length === [...w.s].length && !e.zh.includes(x));
+      const opts = shuffle([w.s, ...sample(look, 3)]);
+      host.innerHTML = `<p class="muted center">${head}</p>${play}<div class="grid2">${opts.map((o, i) => `<button class="opt center hz" style="font-size:26px" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
+      return bindMC(host, opts, opts.indexOf(w.s), done);
+    }
+    kind = 'which';
+  }
+  const others = sentLike(e, 3), opts = shuffle([e, ...others]);
+  host.innerHTML = `<p class="muted center">${kind === 'word' ? head : { meaning: 'Listen. What does it mean?', which: 'Listen. Which sentence did you hear?' }[kind]}</p>${play}${mcHTML(opts, o => kind === 'which' ? `<span class="hz" style="font-size:19px">${esc(o.zh)}</span>` : esc(o.en))}`;
+  bindMC(host, opts, opts.indexOf(e), done);
+}
 EX.listenSentence = (host, it, cb) => { // hear a whole sentence at natural speed, catch its meaning
   const e = pick(it.ex || []); if (!e) return EX.listenType(host, it, cb);
-  const all = [...D.items.values()].flatMap(x => x.ex || []), seen = new Set([e.en]), uniq = l => l.filter(x => !seen.has(x.en) && seen.add(x.en));
-  const near = uniq(shuffle([...D.items.values()].filter(x => x.unit === it.unit && x.id !== it.id).flatMap(x => x.ex || [])));
-  const pool = near.length >= 3 ? near : near.concat(uniq(sample(all, 60)));
-  const opts = shuffle([e, ...sample(pool, 3)]), r = Math.max(0.85, listenRate(it));
-  host.innerHTML = `<p class="muted center">Listen. What does the sentence mean?</p>${audioBtns(e.zh, r)}${mcHTML(opts, o => esc(o.en))}`;
-  setTimeout(() => say(e.zh, r), 200);
-  bindMC(host, opts, opts.indexOf(e), res => cb({ ...res, noAudio: true, why: sentReveal(e) }));
+  sentenceQ(host, e, Math.max(0.85, listenRate(it)), res => cb({ ...res, noAudio: true, why: sentReveal(e) }));
 };
 EX.buildSentence = (host, it, cb) => { const e = pick(exWith(it)) || (it.ex || [])[0]; if (!e) return EX.mcMeaning(host, it, cb); exDrill(host, { type: 'order', zh: e.zh, p: e.p, en: e.en }, cb); };
 EX.speakSentence = (host, it, cb) => {
@@ -1892,10 +1920,7 @@ function EXS(host, sx, cb, c, force) {
   const reveal = `<div class="hz tc" style="font-size:20px;margin:6px 0">${rubyHTML(sx.zh, sx.p)} <button class="lplay" data-act="say" data-t="${esc(sx.zh)}" aria-label="Play">${ic('play')}</button></div><div class="small muted">${esc(sx.en)}</div>`;
   const done = res => cb({ ...res, noAudio: true, why: (res.why ? res.why + '<br>' : '') + reveal });
   if (kind === 'hear') {
-    const opts = shuffle([sx, ...sample(sentPool(sx), 3)]);
-    host.innerHTML = `<p class="muted center">句子 · What does it mean?</p>${audioBtns(sx.zh, rate)}${mcHTML(opts, o => esc(o.en))}`;
-    setTimeout(() => say(sx.zh, rate), 200);
-    bindMC(host, opts, opts.indexOf(sx), done); return noListenLink(host);
+    sentenceQ(host, sx, rate, done); return noListenLink(host);
   }
   if (kind === 'say') {
     let peek = false;
@@ -2099,6 +2124,7 @@ function startLesson(l) {
   for (let k = 0; k < items.length; k += 4) {
     const chunk = items.slice(k, k + 4);
     chunk.forEach(it => tasks.push({ kind: 'intro', item: it.id }));
+    tasks.push(...chunk.filter(it => it.k !== 'syl').map(it => T(it, 'writing', 'trace')).filter(Boolean)); // strokes first, before any other question
     tasks.push(...shuffle(chunk.map(it => it.k === 'syl' ? T(it, 'listening', 'toneId') : T(it, 'reading', 'mcMeaning')).filter(Boolean)));
   }
   // 2. the rules behind the words
@@ -2123,7 +2149,7 @@ function startLesson(l) {
     if (it.k === 'syl') { practice.push(T(it, 'speaking', 'shadow'), T(it, 'listening', 'listenType')); continue; }
     // meaning in context, meaning by ear, and saying it yourself; trace single characters (longer words get written in the final round)
     practice.push(T(it, 'reading', exWith(it).length ? 'cloze' : 'mcMeaning'), T(it, 'listening', 'listenMC'), T(it, 'speaking', it.k === 'rad' ? null : 'speakMeaning'));
-    if ([...it.s].filter(Core.isHan).length === 1) practice.push(T(it, 'writing', 'trace'));
+    if ([...it.s].filter(Core.isHan).length <= 2) practice.push(T(it, 'writing', 'handwrite')); // strokes again, from memory
     const ch = it.k === 'char' && D.chars.get(it.s); if (ch && (ch.c || []).length >= 2) practice.push(T(it, 'writing', 'assemble'));
     if (it.rad && it.k === 'char') practice.push(T(it, 'reading', 'nameRad'));
     if (it.words) practice.push(T(it, 'reading', 'wordBuild'));
