@@ -1518,7 +1518,7 @@ function startSession(tasks, mode, opts = {}) {
   for (let i = 1; i < tasks.length; i++) if (tasks[i].item && tasks[i - 1].item && tasks[i].item === tasks[i - 1].item && tasks[i].kind !== 'intro') {
     const j = tasks.findIndex((t, k) => k > i && t.item !== tasks[i].item && t.kind !== 'intro'); if (j > 0) [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
   }
-  SES = { tasks, i: 0, mode, ok: 0, n: 0, wrong: [], opts, t0: Date.now() };
+  SES = { tasks, i: 0, mode, ok: 0, n: 0, wrong: [], opts, t0: Date.now(), back: location.hash && location.hash !== '#session' ? location.hash : '#today' };
   location.hash = '#session';
   renderTask();
 }
@@ -2788,7 +2788,7 @@ V.help = () => {
 // ---------------- global actions ----------------
 const ACT = {
   say: el => say(el.dataset.t, el.dataset.r ? +el.dataset.r : undefined, el.dataset.p),
-  quit: () => { if (confirm('End this session? Progress so far is saved.')) endSession(); },
+  quit: () => { if (!confirm('Leave this session? Answers so far are saved; the lesson stays unfinished.')) return; const back = (SES && SES.back) || '#today'; SES = null; go(back); }, // quitting never counts as finishing
   reviews: () => startReviews(), weak: () => startWeak(),
   radsheet: el => radSheet(+el.dataset.ri),
   radquiz: () => D.rad ? startRadQuiz() : toast('Radicals not loaded'),
